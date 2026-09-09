@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.6] - 2026-09-08
+
+### Fixed
+- queue WebSocket messages sent during connection setup so the initial terminal resize reaches the remote PTY ([#27](https://github.com/jordanhubbard/webmux/pull/27), thanks [@de-ataka](https://github.com/de-ataka))
+
 ## [1.3.5] - 2026-09-08
 
 ### Added
