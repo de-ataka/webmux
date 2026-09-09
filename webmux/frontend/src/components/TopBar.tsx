@@ -25,12 +25,15 @@ function getHostSwitchContext(hostSwitcher?: HostSwitcherConfig) {
 
 interface TopBarProps {
   auth: AuthState;
+  appName: string;
   fontSize: number;
   onFontSizeChange: (size: number) => void;
   termCols: number;
   termRows: number;
   onTermSizeChange: (cols: number, rows: number) => void;
   onManageUsers: () => void;
+  onManageSettings: () => void;
+  canManageSettings: boolean;
   secureMode: boolean;
   currentUser: string | null;
   themes?: NamedTheme[];
@@ -47,12 +50,15 @@ interface TopBarProps {
 
 export function TopBar({
   auth,
+  appName,
   fontSize,
   onFontSizeChange,
   termCols,
   termRows,
   onTermSizeChange,
   onManageUsers,
+  onManageSettings,
+  canManageSettings,
   secureMode,
   currentUser,
   themes = [],
@@ -103,7 +109,7 @@ export function TopBar({
     {showHelp && <HelpDialog onClose={() => setShowHelp(false)} />}
     <div style={styles.bar}>
       <div style={styles.left}>
-        <span style={styles.logo}>{'\u25a6'} WebMux</span>
+        <span style={styles.logo}>{'\u25a6'} {appName.toLowerCase() === 'webmux' ? 'WebMux' : appName}</span>
         <button
           style={{
             ...styles.broadcastBtn,
@@ -293,6 +299,17 @@ export function TopBar({
           </div>
         )}
 
+        {canManageSettings && (
+          <button
+            style={styles.settingsBtn}
+            onClick={onManageSettings}
+            title="Application settings"
+            aria-label="Settings"
+          >
+            ⚙
+          </button>
+        )}
+
         <div style={{
           ...styles.modeBadge,
           background: secureMode ? '#1a3a2a' : '#3a2a0a',
@@ -389,6 +406,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: '#7c6af7',
     letterSpacing: 1,
+  },
+  settingsBtn: {
+    border: '1px solid #44446a',
+    borderRadius: 4,
+    padding: '3px 9px',
+    background: '#20203b',
+    color: '#d8d8e8',
+    cursor: 'pointer',
+    fontSize: 17,
+    lineHeight: 1.1,
   },
   broadcastBtn: {
     border: '1px solid',

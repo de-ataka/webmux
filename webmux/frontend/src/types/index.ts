@@ -202,6 +202,11 @@ export interface AppConfig {
     session_logging?: {
       enabled?: boolean;
     };
+    transport?: {
+      prefer_mosh?: boolean;
+      ssh_fallback?: boolean;
+      mosh_server_path?: string;
+    };
     ui?: {
       default_pane?: WorkspaceName;
       host_switcher?: HostSwitcherConfig;

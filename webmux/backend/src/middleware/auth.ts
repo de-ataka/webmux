@@ -126,6 +126,32 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   }
 }
 
+// Runtime application settings are operator-owned. Trusted mode has no account
+// system, so the person with network access is the operator. In local-auth mode,
+// require an authenticated administrator just as account management does.
+export function requireAdminOrTrusted(req: Request, res: Response, next: NextFunction): void {
+  try {
+    const authConfig = persistence.loadAuth();
+    if (authConfig.auth.mode === 'none') {
+      next();
+      return;
+    }
+
+    const username = (req as Request & { user?: AuthPayload }).user?.sub;
+    if (!username) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    if (!resolveIsAdmin(authConfig.auth.users || [], username)) {
+      res.status(403).json({ error: 'Admin privileges required' });
+      return;
+    }
+    next();
+  } catch {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 export function requireAuthWs(token: string | undefined): boolean {
   try {
     const authConfig = persistence.loadAuth();

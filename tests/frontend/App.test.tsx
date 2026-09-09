@@ -144,6 +144,18 @@ describe('App', () => {
     });
   });
 
+  it('opens application settings from the gear in trusted mode', async () => {
+    mockAuth.isLoading = false;
+    mockAuth.isAuthenticated = true;
+    mockAuth.authStatus = { mode: 'none', bootstrap_required: false };
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Settings' })).toBeDefined();
+    expect(await screen.findByText('Log terminal sessions to disk')).toBeDefined();
+  });
+
   it('shows a blocking timeout dialog and returns to sign in', async () => {
     mockAuth.isLoading = false;
     mockAuth.isAuthenticated = true;

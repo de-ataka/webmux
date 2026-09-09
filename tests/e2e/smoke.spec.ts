@@ -58,4 +58,25 @@ test.describe('UI loads', () => {
     expect(body.app.default_term).toBeDefined();
     expect(body.app.default_term.cols).toBe(80);
   });
+
+  test('settings gear enables session transcript logging', async ({ page, request }) => {
+    await page.goto('/');
+    await expect(page.locator('text=Click to add a session').first()).toBeVisible({ timeout: 10_000 });
+
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('checkbox', { name: /Log terminal sessions to disk/ }).check();
+    await dialog.getByRole('button', { name: 'Save settings' }).click();
+    await expect(dialog.getByText('Settings saved')).toBeVisible();
+
+    const configRes = await request.get('/api/config');
+    expect(configRes.ok()).toBe(true);
+    expect((await configRes.json()).app.session_logging.enabled).toBe(true);
+
+    const resetRes = await request.put('/api/config', {
+      data: { app: { session_logging: { enabled: false } } },
+    });
+    expect(resetRes.ok()).toBe(true);
+  });
 });

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { persistence } from '../services/persistenceManager';
-import { requireAuth } from '../middleware/auth';
+import { requireAdminOrTrusted, requireAuth } from '../middleware/auth';
 import { TransportLauncher } from '../services/transportLauncher';
 import {
   appConfigWithEffectiveTerminalGridLimits,
@@ -94,7 +94,7 @@ router.get('/fonts/:index', (req: Request, res: Response) => {
 // Only allow updating safe fields — not listen_host, ports, or secure_mode at runtime
 const MUTABLE_APP_FIELDS = ['name', 'default_term', 'font_faces', 'terminal_grid', 'session_logging', 'transport', 'ui'];
 
-router.put('/', (req: Request, res: Response) => {
+router.put('/', requireAdminOrTrusted, (req: Request, res: Response) => {
   try {
     const current = persistence.loadApp();
     const updates = req.body?.app;

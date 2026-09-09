@@ -7,10 +7,11 @@ import { Workspace } from './components/Workspace';
 import { GraphicsWorkspace } from './components/GraphicsWorkspace';
 import { AgentWorkspace } from './components/AgentWorkspace';
 import { UsersDialog } from './components/UsersDialog';
+import { SettingsDialog } from './components/SettingsDialog';
 import { InputBroadcastProvider } from './contexts/InputBroadcastContext';
 import { WorkspacePaneProvider, useWorkspacePane, type WorkspacePane } from './contexts/WorkspacePaneContext';
 import { api } from './utils/api';
-import type { AgentDefinition, AgentsConfig, AppFontFaceConfig, HostSwitcherConfig, NamedTheme } from './types';
+import type { AgentDefinition, AgentsConfig, AppConfig, AppFontFaceConfig, HostSwitcherConfig, NamedTheme } from './types';
 import { loadBundledThemes, loadGlobalTheme, saveGlobalTheme } from './utils/themes';
 import {
   DEFAULT_TERMINAL_FONT_FAMILY,
@@ -21,6 +22,7 @@ import {
 
 interface AuthenticatedAppProps {
   auth: AuthState;
+  appName: string;
   fontSize: number;
   fontFamily: string;
   onFontSizeChange: (size: number) => void;
@@ -32,6 +34,8 @@ interface AuthenticatedAppProps {
     maxRows: number | null;
   };
   onManageUsers: () => void;
+  onManageSettings: () => void;
+  canManageSettings: boolean;
   secureMode: boolean;
   currentUser: string | null;
   showUsers: boolean;
@@ -70,6 +74,7 @@ function enabledAgentDefinitions(config: AgentsConfig): AgentDefinition[] {
 
 function AuthenticatedApp({
   auth,
+  appName,
   fontSize,
   fontFamily,
   onFontSizeChange,
@@ -78,6 +83,8 @@ function AuthenticatedApp({
   onTermSizeChange,
   terminalGridLimit,
   onManageUsers,
+  onManageSettings,
+  canManageSettings,
   secureMode,
   currentUser,
   showUsers,
@@ -128,12 +135,15 @@ function AuthenticatedApp({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TopBar
         auth={auth}
+        appName={appName}
         fontSize={fontSize}
         onFontSizeChange={onFontSizeChange}
         termCols={termCols}
         termRows={termRows}
         onTermSizeChange={onTermSizeChange}
         onManageUsers={onManageUsers}
+        onManageSettings={onManageSettings}
+        canManageSettings={canManageSettings}
         secureMode={secureMode}
         currentUser={currentUser}
         themes={themes}
@@ -229,6 +239,7 @@ function saveTermSettings(fs: number, cols: number, rows: number, fontFamily: st
 
 export default function App() {
   const auth = useAuth();
+  const [appName, setAppName] = useState('WebMux');
   const [fontSize, setFontSize] = useState(14);
   const [fontFamily, setFontFamily] = useState(DEFAULT_TERMINAL_FONT_FAMILY);
   const [termCols, setTermCols] = useState(80);
@@ -238,6 +249,7 @@ export default function App() {
     maxRows: null,
   });
   const [showUsers, setShowUsers] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [secureMode, setSecureMode] = useState(true);
   const [themes, setThemes] = useState<NamedTheme[]>([]);
   const [globalTheme, setGlobalTheme] = useState<string | null>(() => loadGlobalTheme());
@@ -254,6 +266,24 @@ export default function App() {
     () => (auth.isAuthenticated ? (auth.username ?? parseTokenUser()) : null),
     [auth.isAuthenticated, auth.username],
   );
+  const canManageSettings = auth.authStatus?.mode === 'none' || auth.isAdmin;
+
+  const applyConfig = useCallback((config: AppConfig) => {
+    setAppName(config.app.name);
+    setSecureMode(config.app.secure_mode);
+    setFontSize(config.app.default_term.font_size);
+    setFontFamily(normalizeTerminalFontFamily(config.app.default_term.font_family));
+    setTermCols(config.app.default_term.cols);
+    setTermRows(config.app.default_term.rows);
+    setTerminalGridLimit({
+      maxCols: config.app.terminal_grid?.max_cols ?? null,
+      maxRows: config.app.terminal_grid?.max_rows ?? null,
+    });
+    setDefaultPane(config.app.ui?.default_pane ?? 'terminals');
+    setAgentConfig(config.app.agents ?? DEFAULT_AGENT_CONFIG);
+    setHostSwitcher(config.app.ui?.host_switcher ?? DEFAULT_HOST_SWITCHER);
+    setFontFaces(config.app.font_faces ?? []);
+  }, []);
 
   useEffect(() => {
     if (auth.isLoading || !auth.isAuthenticated) return;
@@ -261,22 +291,10 @@ export default function App() {
     let cancelled = false;
     api.getConfig().then(config => {
       if (cancelled) return;
-      setSecureMode(config.app.secure_mode);
-      setFontSize(config.app.default_term.font_size);
-      setFontFamily(normalizeTerminalFontFamily(config.app.default_term.font_family));
-      setTermCols(config.app.default_term.cols);
-      setTermRows(config.app.default_term.rows);
-      setTerminalGridLimit({
-        maxCols: config.app.terminal_grid?.max_cols ?? null,
-        maxRows: config.app.terminal_grid?.max_rows ?? null,
-      });
-      setDefaultPane(config.app.ui?.default_pane ?? 'terminals');
-      setAgentConfig(config.app.agents ?? DEFAULT_AGENT_CONFIG);
-      setHostSwitcher(config.app.ui?.host_switcher ?? DEFAULT_HOST_SWITCHER);
-      setFontFaces(config.app.font_faces ?? []);
+      applyConfig(config);
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [auth.isAuthenticated, auth.isLoading]);
+  }, [applyConfig, auth.isAuthenticated, auth.isLoading]);
 
   useEffect(() => {
     loadBundledThemes().then(setThemes).catch(() => {});
@@ -297,14 +315,14 @@ export default function App() {
 
   const handleFontSizeChange = useCallback((size: number) => {
     setFontSize(size);
-    saveTermSettings(size, termCols, termRows, fontFamily);
-  }, [fontFamily, termCols, termRows]);
+    if (canManageSettings) saveTermSettings(size, termCols, termRows, fontFamily);
+  }, [canManageSettings, fontFamily, termCols, termRows]);
 
   const handleTermSizeChange = useCallback((cols: number, rows: number) => {
     setTermCols(cols);
     setTermRows(rows);
-    saveTermSettings(fontSize, cols, rows, fontFamily);
-  }, [fontFamily, fontSize]);
+    if (canManageSettings) saveTermSettings(fontSize, cols, rows, fontFamily);
+  }, [canManageSettings, fontFamily, fontSize]);
 
   const availablePanes = useMemo<WorkspacePane[]>(() => {
     const agentDefinitions = enabledAgentDefinitions(agentConfig);
@@ -318,6 +336,12 @@ export default function App() {
     }
     return panes;
   }, [agentConfig]);
+  const workspaceOptions = useMemo(() => availablePanes.map(pane => ({
+    value: pane,
+    label: pane === 'terminals' ? 'Terminals' : pane === 'desktops' ? 'Desktops' : pane === 'agents'
+      ? 'Agents'
+      : agentConfig.definitions.find(definition => definition.workspace === pane)?.plural_label ?? pane,
+  })), [agentConfig.definitions, availablePanes]);
 
   if (auth.isLoading) {
     return (
@@ -336,6 +360,7 @@ export default function App() {
       <WorkspacePaneProvider defaultPane={defaultPane} availablePanes={availablePanes}>
         <AuthenticatedApp
           auth={auth}
+          appName={appName}
           fontSize={fontSize}
           fontFamily={fontFamily}
           onFontSizeChange={handleFontSizeChange}
@@ -344,6 +369,8 @@ export default function App() {
           onTermSizeChange={handleTermSizeChange}
           terminalGridLimit={terminalGridLimit}
           onManageUsers={() => setShowUsers(true)}
+          onManageSettings={() => setShowSettings(true)}
+          canManageSettings={canManageSettings}
           secureMode={secureMode}
           currentUser={currentUser}
           showUsers={showUsers}
@@ -368,6 +395,13 @@ export default function App() {
           agentConfig={agentConfig}
           hostSwitcher={hostSwitcher}
         />
+        {showSettings && canManageSettings && (
+          <SettingsDialog
+            workspaceOptions={workspaceOptions}
+            onClose={() => setShowSettings(false)}
+            onSaved={applyConfig}
+          />
+        )}
         {auth.sessionExpired && (
           <div style={timeoutStyles.backdrop} role="dialog" aria-modal="true" aria-labelledby="session-timeout-title">
             <div style={timeoutStyles.dialog}>

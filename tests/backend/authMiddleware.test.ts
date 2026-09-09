@@ -180,4 +180,39 @@ describe('Auth Middleware', () => {
       expect(denyNext).not.toHaveBeenCalled();
     });
   });
+
+  describe('requireAdminOrTrusted', () => {
+    it('allows configuration changes in trusted mode', () => {
+      writeAuthConfig('none');
+      const { requireAdminOrTrusted } = require('@backend/middleware/auth');
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() } as any;
+      const next = jest.fn();
+
+      requireAdminOrTrusted({} as any, res, next);
+
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
+    });
+
+    it('allows admins and rejects non-admins in local-auth mode', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'config', 'auth.yaml'),
+        'auth:\n  mode: local\n  users:\n' +
+        '    - username: boss\n      password_hash: x\n      admin: true\n' +
+        '    - username: guest\n      password_hash: x\n      admin: false\n',
+      );
+      const { requireAdminOrTrusted } = require('@backend/middleware/auth');
+
+      const okNext = jest.fn();
+      const okRes = { status: jest.fn().mockReturnThis(), json: jest.fn() } as any;
+      requireAdminOrTrusted({ user: { sub: 'boss' } } as any, okRes, okNext);
+      expect(okNext).toHaveBeenCalled();
+
+      const denyNext = jest.fn();
+      const denyRes = { status: jest.fn().mockReturnThis(), json: jest.fn() } as any;
+      requireAdminOrTrusted({ user: { sub: 'guest' } } as any, denyRes, denyNext);
+      expect(denyRes.status).toHaveBeenCalledWith(403);
+      expect(denyNext).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -31,12 +31,15 @@ function makeAuth(overrides: Partial<AuthState> = {}): AuthState {
 describe('TopBar', () => {
   const defaultTopBarProps = () => ({
     auth: makeAuth(),
+    appName: 'WebMux',
     fontSize: 14,
     onFontSizeChange: vi.fn(),
     termCols: 80,
     termRows: 24,
     onTermSizeChange: vi.fn(),
     onManageUsers: vi.fn(),
+    onManageSettings: vi.fn(),
+    canManageSettings: true,
     secureMode: true,
     currentUser: 'admin',
     globalAutoScroll: true,
@@ -115,6 +118,20 @@ describe('TopBar', () => {
     render(<TopBar {...defaultTopBarProps()} onManageUsers={onManageUsers} />, { wrapper });
     fireEvent.click(screen.getByText('Users'));
     expect(onManageUsers).toHaveBeenCalled();
+  });
+
+  it('shows the settings gear to operators and opens settings', () => {
+    const onManageSettings = vi.fn();
+    render(<TopBar {...defaultTopBarProps()} onManageSettings={onManageSettings} />, { wrapper });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+
+    expect(onManageSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the settings gear from non-admin users', () => {
+    render(<TopBar {...defaultTopBarProps()} canManageSettings={false} />, { wrapper });
+    expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull();
   });
 
   it('shows term size and responds to C+/C-/R+/R-', () => {

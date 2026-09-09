@@ -21,6 +21,7 @@ A browser-based remote workspace for persistent terminal and desktop sessions. W
 - **Two security modes** — local auth (Argon2id + JWT + HTTPS) or trusted mode for isolated networks
 - **OS service integration** — launchd (macOS), systemd (Linux), and Windows Service Control Manager support
 - **YAML configuration** — human-editable config in `~/.config/webmux/`, separate from the source tree
+- **Operator settings UI** — edit runtime-safe application settings from an admin-only top-bar gear
 - **Audit log** — append-only JSONL event log (logins, session lifecycle)
 - **Optional agent views** — disabled-by-default tmux-backed agent session browser with attach and scratch-shell support
 - **Session expiry handling** — visible JWT countdown and refresh controls prevent expired browser sessions from entering reconnect loops
@@ -99,6 +100,8 @@ make start SECURE_MODE=true JWT_SECRET=$(openssl rand -hex 32)
 ## Configuration
 
 Runtime configuration lives in `~/.config/webmux/` (override with `WEBMUX_HOME`). On first run, default config files are copied from `config.defaults/` in the source tree.
+
+Administrators can edit runtime-safe application settings from the **gear button** in the top bar. In trusted mode, the gear is available to the local operator; in secure mode, it is visible only to administrator accounts. The dialog manages application identity, terminal defaults and grid limits, session logging, transport preferences, hosted fonts, the default workspace, and the host switcher. Startup and security settings—ports, bind addresses, authentication mode, and secrets—remain file-managed.
 
 ### `app.yaml` — Application Settings
 
@@ -256,7 +259,7 @@ webmux/                          Source / install directory (WEBMUX_ROOT)
 | `POST` | `/api/keys` | Add SSH key reference |
 | `DELETE` | `/api/keys/:id` | Delete SSH key |
 | `GET` | `/api/config` | Get app config |
-| `PUT` | `/api/config` | Update app config |
+| `PUT` | `/api/config` | Update runtime-safe app config (administrator in secure mode) |
 | `GET` | `/api/config/layout` | Get layout |
 | `PUT` | `/api/config/layout` | Update layout |
 | `GET` | `/api/agents/config` | Get normalized agent-view config |
