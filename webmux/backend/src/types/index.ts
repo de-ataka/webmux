@@ -17,6 +17,9 @@ export interface AppConfig {
       max_cols?: number | null;
       max_rows?: number | null;
     };
+    session_logging?: {
+      enabled?: boolean;
+    };
     transport: {
       prefer_mosh: boolean;
       ssh_fallback: boolean;

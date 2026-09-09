@@ -58,7 +58,8 @@ Browser                                WebMux Host
 3. Frontend opens WebSocket to `/api/term/:id`
 4. PresenceService tracks viewer, assigns focus
 5. Terminal data flows: PTY stdout -> WebSocket -> xterm.js (and reverse for input)
-6. Session metadata and layout are persisted under `WEBMUX_HOME`; audit events are appended as JSONL
+6. When `app.session_logging.enabled` is true, the same PTY output is streamed to a protected, per-launch transcript under `WEBMUX_HOME/logs/sessions/`
+7. Session metadata and layout are persisted under `WEBMUX_HOME`; audit events are appended as JSONL
 
 Desktop sessions follow the same REST-managed lifecycle, but their interactive streams use protocol-specific WebSocket handlers. VNC traffic is proxied directly; RDP traffic is translated through `guacd`. Agent sessions are internal terminal sessions created only after the requested tmux target passes access and existence checks.
 

@@ -92,7 +92,7 @@ router.get('/fonts/:index', (req: Request, res: Response) => {
 });
 
 // Only allow updating safe fields — not listen_host, ports, or secure_mode at runtime
-const MUTABLE_APP_FIELDS = ['name', 'default_term', 'font_faces', 'terminal_grid', 'transport', 'ui'];
+const MUTABLE_APP_FIELDS = ['name', 'default_term', 'font_faces', 'terminal_grid', 'session_logging', 'transport', 'ui'];
 
 router.put('/', (req: Request, res: Response) => {
   try {
@@ -127,6 +127,9 @@ router.put('/', (req: Request, res: Response) => {
         terminal_grid: updates.terminal_grid
           ? { ...current.app.terminal_grid, ...updates.terminal_grid }
           : current.app.terminal_grid,
+        session_logging: updates.session_logging
+          ? { ...current.app.session_logging, ...updates.session_logging }
+          : current.app.session_logging,
         transport: updates.transport
           ? { ...current.app.transport, ...updates.transport }
           : current.app.transport,
@@ -159,6 +162,7 @@ router.put('/', (req: Request, res: Response) => {
         ...merged.app,
         default_term: normalized.app.default_term,
         font_faces: normalized.app.font_faces,
+        session_logging: normalized.app.session_logging,
       },
     };
     persistence.saveApp(persisted);

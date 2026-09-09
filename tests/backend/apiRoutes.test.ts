@@ -193,6 +193,7 @@ describe('API Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.app.name).toBe('webmux');
       expect(res.body.app.default_term.font_family).toBe('ui-monospace, "SFMono-Regular", Monaco, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace');
+      expect(res.body.app.session_logging).toEqual({ enabled: false });
     });
 
     it('returns environment-overridden terminal grid limits', async () => {
@@ -336,6 +337,16 @@ describe('API Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.app.terminal_grid.max_cols).toBe(4);
       expect(res.body.app.terminal_grid.max_rows).toBe(3);
+    });
+
+    it('updates session transcript logging for newly launched terminals', async () => {
+      const res = await request(app)
+        .put('/api/config')
+        .send({ app: { session_logging: { enabled: true } } });
+
+      expect(res.status).toBe(200);
+      expect(res.body.app.session_logging).toEqual({ enabled: true });
+      expect(persistence.loadApp().app.session_logging).toEqual({ enabled: true });
     });
   });
 

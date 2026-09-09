@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-09-08
+
+### Added
+- add opt-in, per-launch terminal transcript logging under `WEBMUX_HOME/logs/sessions/`
+
 ### Documentation
 - refresh feature, architecture, development, and contributor documentation
 - split macOS, Linux, and Windows setup into focused platform guides

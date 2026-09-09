@@ -262,6 +262,9 @@ export function normalizeAppConfig(config: AppConfig): AppConfig {
         max_cols: config.app.terminal_grid?.max_cols ?? null,
         max_rows: config.app.terminal_grid?.max_rows ?? null,
       },
+      session_logging: {
+        enabled: booleanOrDefault(config.app.session_logging?.enabled, false),
+      },
       default_term: {
         ...config.app.default_term,
         font_family: normalizeFontFamily(config.app.default_term?.font_family),

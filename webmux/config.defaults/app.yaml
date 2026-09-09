@@ -14,6 +14,8 @@ app:
   terminal_grid:
     max_cols: null
     max_rows: null
+  session_logging:
+    enabled: false
   ui:
     default_pane: terminals
     host_switcher:
