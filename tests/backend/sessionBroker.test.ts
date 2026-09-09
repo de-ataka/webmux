@@ -6,6 +6,7 @@ describe('SessionBroker', () => {
   let tmpDir: string;
   let originalHome: string | undefined;
   let SessionBroker: typeof import('@backend/services/sessionBroker').SessionBroker;
+  let SessionTranscriptLogger: typeof import('@backend/services/sessionTranscriptLogger').SessionTranscriptLogger;
   let transportLauncher: typeof import('@backend/services/transportLauncher').transportLauncher;
   let persistence: typeof import('@backend/services/persistenceManager').persistence;
 
@@ -24,6 +25,7 @@ describe('SessionBroker', () => {
 
     jest.resetModules();
     ({ SessionBroker } = require('@backend/services/sessionBroker'));
+    ({ SessionTranscriptLogger } = require('@backend/services/sessionTranscriptLogger'));
     ({ transportLauncher } = require('@backend/services/transportLauncher'));
     ({ persistence } = require('@backend/services/persistenceManager'));
     (SessionBroker as unknown as Record<string, number>).AGENT_ATTACH_REPLAY_SUPPRESS_MS = 1500;
@@ -55,6 +57,18 @@ describe('SessionBroker', () => {
 
   function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function enableTranscriptLogging(): void {
+    fs.appendFileSync(
+      path.join(tmpDir, 'config', 'app.yaml'),
+      '  session_logging:\n    enabled: true\n',
+    );
+  }
+
+  function transcriptFiles(): string[] {
+    const directory = path.join(tmpDir, 'logs', 'sessions');
+    return fs.existsSync(directory) ? fs.readdirSync(directory).sort() : [];
   }
 
   it('initializes with no sessions', async () => {
@@ -412,11 +426,107 @@ describe('SessionBroker', () => {
     expect(session.key_id).toBe('mykey');
   });
 
+  it('does not create transcripts when session logging is disabled', async () => {
+    const broker = new SessionBroker();
+    await broker.initialize();
+    const session = await broker.create({ username: 'u', hostname: 'h' });
+    const handle = transportLauncher.getHandle(session.id) as unknown as { emit: (event: string, data: unknown) => void };
+
+    handle.emit('data', 'not persisted');
+    await broker.shutdown();
+
+    expect(transcriptFiles()).toEqual([]);
+  });
+
+  it('logs PTY output and transcript lifecycle events when enabled', async () => {
+    enableTranscriptLogging();
+    const broker = new SessionBroker();
+    await broker.initialize();
+    const session = await broker.create({ username: 'u', hostname: 'h' });
+    const handle = transportLauncher.getHandle(session.id) as unknown as { emit: (event: string, data: unknown) => void };
+
+    handle.emit('data', 'hello from the PTY\r\n');
+    await broker.shutdown();
+
+    const files = transcriptFiles();
+    expect(files).toHaveLength(1);
+    expect(files[0]).toMatch(new RegExp(`^session-${session.id}-\\d{8}T\\d{6}Z-g1-[a-f0-9]{8}\\.log$`));
+    const file = path.join(tmpDir, 'logs', 'sessions', files[0]);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).toContain('[webmux transcript started');
+    expect(content).toContain('hello from the PTY');
+    expect(content).toContain('reason=shutdown');
+    if (process.platform !== 'win32') {
+      expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+      expect(fs.statSync(path.dirname(file)).mode & 0o777).toBe(0o700);
+    }
+
+    const eventsDir = path.join(tmpDir, 'data', 'events');
+    const eventLines = fs.readFileSync(path.join(eventsDir, fs.readdirSync(eventsDir)[0]), 'utf8')
+      .trim()
+      .split('\n')
+      .map(line => JSON.parse(line) as Record<string, unknown>);
+    expect(eventLines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'session_transcript_started', session_id: session.id, path: file }),
+      expect.objectContaining({ type: 'session_transcript_stopped', session_id: session.id, path: file, reason: 'shutdown' }),
+    ]));
+  });
+
+  it('uses a new transcript file after reconnecting', async () => {
+    enableTranscriptLogging();
+    const broker = new SessionBroker();
+    await broker.initialize();
+    const session = await broker.create({ username: 'u', hostname: 'h' });
+    const firstHandle = transportLauncher.getHandle(session.id) as unknown as { emit: (event: string, data: unknown) => void };
+    firstHandle.emit('data', 'first launch output\r\n');
+
+    await broker.reconnect(session.id);
+    const secondHandle = transportLauncher.getHandle(session.id) as unknown as { emit: (event: string, data: unknown) => void };
+    secondHandle.emit('data', 'second launch output\r\n');
+    await broker.shutdown();
+
+    const contents = transcriptFiles().map(file =>
+      fs.readFileSync(path.join(tmpDir, 'logs', 'sessions', file), 'utf8'),
+    );
+    expect(contents).toHaveLength(2);
+    expect(contents.filter(content => content.includes('first launch output'))).toHaveLength(1);
+    expect(contents.filter(content => content.includes('second launch output'))).toHaveLength(1);
+  });
+
+  it('keeps the session running when a transcript write fails', async () => {
+    enableTranscriptLogging();
+    let writes = 0;
+    const close = jest.fn(async () => undefined);
+    const logger = new SessionTranscriptLogger(() => ({
+      write: () => {
+        writes += 1;
+        if (writes > 1) throw new Error('disk full');
+      },
+      close,
+    }));
+    const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const broker = new SessionBroker(logger);
+    await broker.initialize();
+    const session = await broker.create({ username: 'u', hostname: 'h' });
+    const handle = transportLauncher.getHandle(session.id) as unknown as { emit: (event: string, data: unknown) => void };
+
+    handle.emit('data', 'still reaches the session');
+
+    expect(broker.get(session.id)?.state).toBe('connected');
+    expect(error).toHaveBeenCalledWith(
+      `Transcript logging failed for session ${session.id}:`,
+      expect.objectContaining({ message: 'disk full' }),
+    );
+    await broker.shutdown();
+    expect(close).toHaveBeenCalled();
+    error.mockRestore();
+  });
+
   it('shutdown persists session state and kills PTYs', async () => {
     const broker = new SessionBroker();
     await broker.initialize();
     await broker.create({ username: 'u', hostname: 'h' });
-    broker.shutdown();
+    await broker.shutdown();
 
     // Verify sessions are persisted as disconnected
     const sessFile = path.join(tmpDir, 'data', 'sessions', 'sessions.yaml');
@@ -428,7 +538,7 @@ describe('SessionBroker', () => {
     const broker1 = new SessionBroker();
     await broker1.initialize();
     const session = await broker1.create({ username: 'u', hostname: 'h' });
-    broker1.shutdown();
+    await broker1.shutdown();
 
     // Re-initialize a fresh broker — it should load and attempt reconnect
     jest.resetModules();

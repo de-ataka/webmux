@@ -124,6 +124,8 @@ app:
   terminal_grid:
     max_cols: null      # null, 0, or omitted = unlimited
     max_rows: null      # null, 0, or omitted = unlimited
+  session_logging:
+    enabled: false      # opt in to raw terminal transcripts on disk
   transport:
     prefer_mosh: false
     ssh_fallback: true
@@ -137,6 +139,10 @@ The `default_term` settings control every terminal tile's dimensions and fixed-w
 Optional `font_faces` entries let WebMux host local font files for browser clients. `source` paths must be relative paths to `.otf`, `.ttf`, `.woff`, or `.woff2` files; they are resolved relative to the real `app.yaml` path, so symlinked config files can keep fonts beside the shared config. The frontend fetches configured font files through authenticated same-origin routes and registers them before refitting terminals. Once a face is declared, reference its `family` name from `default_term.font_family`.
 
 The optional `terminal_grid` settings cap the number of columns and rows available in the terminals workspace. By default both directions are unlimited. `WEBMUX_TERMINAL_GRID_MAX_COLS` and `WEBMUX_TERMINAL_GRID_MAX_ROWS` override the YAML values at runtime; set either variable to a positive integer, or to `0`/`unlimited` for no limit.
+
+Set `session_logging.enabled: true` to record every newly launched SSH, mosh, exec, and agent terminal under `WEBMUX_HOME/logs/sessions/`. Logging begins when WebMux attaches to the PTY and continues while browser viewers detach and reattach. Each initial connection or reconnect receives a separate `session-<id>-<UTC timestamp>-g<generation>-<nonce>.log` file with owner-only permissions on POSIX systems. Start, stop, and error records are also written to the daily JSONL audit stream.
+
+Transcripts contain raw terminal output, including ANSI control sequences and commands echoed by the remote shell. They can contain paths, tokens, and other secrets; access and retention are the operator's responsibility. WebMux does not rotate or delete transcript files. Changing this setting affects newly launched or reconnected terminals, not PTYs that are already running. VNC and RDP pixel streams are not recorded.
 
 Optional tmux-backed agent views are configured under `app.agents` and are disabled by default. See [Agent Views](docs/agent-views.md) and the sample config at [webmux/examples/agent-views/app.yaml](webmux/examples/agent-views/app.yaml).
 
@@ -213,6 +219,7 @@ Each user gets their own session collection. The first user is created via the b
     events/                     JSONL audit log (one file per day)
   logs/
     webmux.log                  Server log output
+    sessions/                   Optional raw terminal transcripts
 
 webmux/                          Source / install directory (WEBMUX_ROOT)
   config.defaults/               Default config templates (copied on first run)

@@ -9,6 +9,7 @@ import { persistence } from './persistenceManager';
 import { compactPositions } from './gridLayout';
 import { assertTerminalGridPosition, nextTerminalGridPosition } from './terminalGridLimits';
 import { agentService } from './agentService';
+import { SessionTranscriptLogger } from './sessionTranscriptLogger';
 import { AgentAccessError, getAgentAccess } from './agentAccess';
 import type { AgentSessionRole, WorkspaceName } from '../types';
 
@@ -85,7 +86,7 @@ export class SessionBroker extends EventEmitter {
   private static AGENT_ATTACH_REPLAY_SUPPRESS_MS = 1500;
   private static AGENT_STATUS_FLUSH_DEBOUNCE_MS = 200;
 
-  constructor() {
+  constructor(private readonly transcriptLogger = new SessionTranscriptLogger()) {
     super();
   }
 
@@ -120,7 +121,7 @@ export class SessionBroker extends EventEmitter {
     }
   }
 
-  shutdown(): void {
+  async shutdown(): Promise<void> {
     console.log('Persisting session state before shutdown...');
     for (const session of this.sessions.values()) {
       if (session.state === 'connected' || session.state === 'connecting') {
@@ -131,6 +132,7 @@ export class SessionBroker extends EventEmitter {
       transportLauncher.kill(session.id);
     }
     this.persistSessions();
+    await this.transcriptLogger.stopAll('shutdown');
   }
 
   async create(req: CreateSessionRequest, owner: string = 'anonymous', internal: InternalCreateSessionOptions = {}): Promise<Session> {
@@ -262,6 +264,7 @@ export class SessionBroker extends EventEmitter {
   }
 
   private wireEvents(session: Session, ptyProcess: pty.IPty, initialCmd: string | undefined, generation: number): void {
+    this.transcriptLogger.start(session, generation);
     let firstData = true;
     let cmdInjected = false;
     const suppressAgentOutputUntil = session.agent_role === 'attach'
@@ -270,6 +273,7 @@ export class SessionBroker extends EventEmitter {
 
     ptyProcess.onData((data: string) => {
       if (!this.isCurrentLaunch(session.id, generation)) return;
+      this.transcriptLogger.write(session.id, generation, data);
       if (firstData) {
         firstData = false;
         this.markConnected(session, true);
@@ -308,6 +312,7 @@ export class SessionBroker extends EventEmitter {
 
     ptyProcess.onExit(({ exitCode }: { exitCode: number }) => {
       if (!this.isCurrentLaunch(session.id, generation)) return;
+      this.transcriptLogger.stop(session.id, generation, 'process_exit');
       session.state = 'disconnected';
       session.updated_at = new Date().toISOString();
       presenceService.broadcastToSession(session.id, {
@@ -338,6 +343,7 @@ export class SessionBroker extends EventEmitter {
       this.bumpLaunchGeneration(sessionId);
       transportLauncher.kill(sessionId);
     }
+    this.transcriptLogger.stop(sessionId, undefined, 'reconnect');
 
     session.state = 'connecting';
     session.updated_at = new Date().toISOString();
@@ -366,6 +372,7 @@ export class SessionBroker extends EventEmitter {
     const owner = session?.owner;
     const wasAgentSession = isAgentSession(session);
     this.bumpLaunchGeneration(sessionId);
+    this.transcriptLogger.stop(sessionId, undefined, 'deleted');
     presenceService.closeSession(sessionId, options.closeCode ?? 1000, options.closeReason ?? 'Session deleted');
     transportLauncher.kill(sessionId);
     this.sessions.delete(sessionId);
@@ -559,6 +566,7 @@ export class SessionBroker extends EventEmitter {
 
   private relaunch(session: Session): void {
     const generation = this.bumpLaunchGeneration(session.id);
+    this.transcriptLogger.stop(session.id, undefined, 'relaunch');
     transportLauncher.kill(session.id);
     session.state = 'connecting';
     session.updated_at = new Date().toISOString();

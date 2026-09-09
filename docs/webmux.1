@@ -122,6 +122,16 @@ and
 .B WEBMUX_TERMINAL_GRID_MAX_ROWS
 override these values at runtime.
 .TP
+.B app.session_logging.enabled
+When
+.BR true ,
+record each newly launched terminal PTY to a separate file under
+.IR $WEBMUX_HOME/logs/sessions/ .
+The default is
+.BR false .
+Transcripts contain raw terminal output, may include secrets, and are not
+automatically rotated or deleted.
+.TP
 .B app.transport.prefer_mosh
 When
 .BR true ,
@@ -204,8 +214,14 @@ TLS certificate (enables HTTPS when present alongside key.pem).
 .I $WEBMUX_ROOT/config/tls/key.pem
 TLS private key.
 .TP
-.I $WEBMUX_ROOT/logs/audit.jsonl
-Append\-only JSONL audit log: login events, session create/delete/exit.
+.I $WEBMUX_HOME/data/events/events-YYYY-MM-DD.jsonl
+Daily append\-only JSONL audit log: login events, session create/delete/exit,
+and transcript lifecycle events.
+.TP
+.I $WEBMUX_HOME/logs/sessions/
+Raw terminal transcripts when app.session_logging.enabled is true. Each PTY
+launch receives a separate file. Transcripts may contain secrets and are not
+automatically rotated or deleted.
 .SH USAGE
 After starting the server, open a browser to
 .I http://localhost:8080

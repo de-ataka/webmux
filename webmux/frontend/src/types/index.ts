@@ -199,6 +199,9 @@ export interface AppConfig {
       max_cols?: number | null;
       max_rows?: number | null;
     };
+    session_logging?: {
+      enabled?: boolean;
+    };
     ui?: {
       default_pane?: WorkspaceName;
       host_switcher?: HostSwitcherConfig;

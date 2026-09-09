@@ -46,6 +46,7 @@ async function main(): Promise<void> {
         default_term: { cols: 80, rows: 24, font_size: 14, font_family: DEFAULT_TERMINAL_FONT_FAMILY },
         font_faces: [],
         terminal_grid: { max_cols: null, max_rows: null },
+        session_logging: { enabled: false },
         ui: { default_pane: 'terminals', host_switcher: { enabled: false, suffixes: [], hosts: [] } },
         agents: { enabled: false, combined_pane: true, disable_in_multi_user_mode: true, definitions: [] },
         transport: { prefer_mosh: false, ssh_fallback: true, mosh_server_path: '' },
@@ -227,7 +228,7 @@ async function main(): Promise<void> {
       wssSecure.close();
     }
 
-    sessionBroker.shutdown();
+    await sessionBroker.shutdown();
     vncBroker.shutdown();
     rdpBroker.shutdown();
     stopPurgeTimer();
