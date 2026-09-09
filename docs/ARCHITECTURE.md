@@ -41,7 +41,8 @@ Browser                                WebMux Host
 | Component | Responsibility |
 |-----------|---------------|
 | **App** | Auth lifecycle, workspace routing, config loading, top-level state |
-| **TopBar** | Workspace navigation, terminal controls, auth countdown, account administration |
+| **TopBar** | Workspace navigation, terminal controls, settings gear, auth countdown, account administration |
+| **SettingsDialog** | Structured editing for allowlisted runtime configuration |
 | **Workspace** | Terminal grid, session CRUD, movement, minimization, themes, lock, and auto-scroll |
 | **GraphicsWorkspace** | Shared grid and fullscreen flows for VNC and RDP sessions |
 | **AgentWorkspace** | Lists agent tmux sessions and hosts attach and scratch terminals |
@@ -65,4 +66,4 @@ Desktop sessions follow the same REST-managed lifecycle, but their interactive s
 
 ## Configuration
 
-Runtime configuration is YAML under `WEBMUX_HOME/config/`, which defaults to `~/.config/webmux/config/`. Files in `webmux/config.defaults/` are templates copied on first run, not live configuration. See the main README for formats and deployment details.
+Runtime configuration is YAML under `WEBMUX_HOME/config/`, which defaults to `~/.config/webmux/config/`. Files in `webmux/config.defaults/` are templates copied on first run, not live configuration. Operators can edit allowlisted runtime-safe fields through `SettingsDialog` and `PUT /api/config`; the backend requires an administrator in secure mode and permits the operator in trusted mode. Startup-sensitive and security-sensitive fields remain file-managed. See the main README for formats and deployment details.

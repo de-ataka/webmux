@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.5] - 2026-09-08
+
+### Added
+- add an operator settings dialog for runtime-safe application configuration
+- expose session logging, terminal, workspace, transport, hosted-font, and host-switcher settings from the top-bar gear
+
+### Security
+- restrict application configuration writes to administrators in secure mode while retaining operator access in trusted mode
+
 ## [1.3.4] - 2026-09-08
 
 ### Added

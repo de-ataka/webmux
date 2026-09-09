@@ -348,6 +348,30 @@ describe('API Routes', () => {
       expect(res.body.app.session_logging).toEqual({ enabled: true });
       expect(persistence.loadApp().app.session_logging).toEqual({ enabled: true });
     });
+
+    it('allows administrators to update config and rejects non-admin users', async () => {
+      fs.writeFileSync(
+        path.join(configDir, 'auth.yaml'),
+        'auth:\n  mode: local\n  users:\n' +
+        '    - username: admin\n      password_hash: x\n      admin: true\n' +
+        '    - username: guest\n      password_hash: x\n      admin: false\n',
+      );
+      const { signToken } = require('@backend/middleware/auth');
+
+      const guestRes = await request(app)
+        .put('/api/config')
+        .set('Authorization', `Bearer ${signToken('guest')}`)
+        .send({ app: { session_logging: { enabled: true } } });
+      expect(guestRes.status).toBe(403);
+      expect(persistence.loadApp().app.session_logging).toBeUndefined();
+
+      const adminRes = await request(app)
+        .put('/api/config')
+        .set('Authorization', `Bearer ${signToken('admin')}`)
+        .send({ app: { session_logging: { enabled: true } } });
+      expect(adminRes.status).toBe(200);
+      expect(adminRes.body.app.session_logging).toEqual({ enabled: true });
+    });
   });
 
   describe('GET /api/config/layout', () => {
