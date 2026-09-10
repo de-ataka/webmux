@@ -5,6 +5,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.8] - 2026-09-09
+
+### Changed
+- require Node.js 24 LTS and upgrade GitHub Actions to their Node 24-based v7 releases
+- replace unchecked VNC and RDP client types so frontend lint runs without warnings
+
 ## [1.3.7] - 2026-09-09
 
 ### Added
