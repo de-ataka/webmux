@@ -1,0 +1,100 @@
+name: Packaging
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: webmux/package-lock.json
+      - name: Verify release version
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          node -e 'if (process.env.RELEASE_TAG !== "v" + require("./webmux/backend/package.json").version) process.exit(1)'
+      - name: Build runtime bundle
+        run: make package
+      - name: Test extracted bundle
+        run: |
+          mkdir "$RUNNER_TEMP/webmux-bundle"
+          tar -xzf dist/webmux-*.tar.gz -C "$RUNNER_TEMP/webmux-bundle"
+          node scripts/smoke-package.cjs "$RUNNER_TEMP"/webmux-bundle/webmux-*
+      - uses: actions/upload-artifact@v7
+        with:
+          name: webmux-${{ matrix.os }}
+          path: dist/*
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@3b81d438eda92ee13b5849940d993be027717ecf
+      - name: Install formula from this revision
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+          HOMEBREW_NO_INSTALL_CLEANUP: '1'
+        run: |
+          brew tap-new --no-git webmux/packaging-test
+          git archive --format=tar.gz --output="$RUNNER_TEMP/webmux-source.tar.gz" HEAD
+          cp -f Formula/webmux.rb "$(brew --repository webmux/packaging-test)/Formula/webmux.rb"
+          export WEBMUX_TEST_FORMULA="$(brew --repository webmux/packaging-test)/Formula/webmux.rb"
+          node - <<'JS'
+          const fs = require('node:fs');
+          const { createHash } = require('node:crypto');
+          const source = `${process.env.RUNNER_TEMP}/webmux-source.tar.gz`;
+          const file = process.env.WEBMUX_TEST_FORMULA;
+          const sha = createHash('sha256').update(fs.readFileSync(source)).digest('hex');
+          fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+            .replace(/^  url .*$/m, `  url "file://${source}"\n  version "0.0.0"`)
+            .replace(/^  sha256 .*$/m, `  sha256 "${sha}"`));
+          JS
+          brew install --build-from-source webmux/packaging-test/webmux
+          brew test webmux/packaging-test/webmux
+      - name: Verify service definition
+        run: |
+          brew services info webmux/packaging-test/webmux --json > "$RUNNER_TEMP/webmux-service.json"
+          node - <<'JS'
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const [service] = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/webmux-service.json`));
+          assert(service.command.endsWith('/opt/webmux/bin/webmux'));
+          assert(service.working_dir);
+          assert(service.log_path.endsWith('/var/log/webmux.log'));
+          JS
+
+  publish:
+    name: Attach release bundles
+    if: github.event_name == 'release'
+    needs: package
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: webmux-*
+          path: dist
+          merge-multiple: true
+      - name: Upload verified bundles and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" dist/* --clobber

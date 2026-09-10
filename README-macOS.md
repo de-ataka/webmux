@@ -2,6 +2,21 @@
 
 WebMux runs natively on macOS using Unix pseudoterminals through `node-pty`. The repository Makefile can build the application, run it directly, or install it as a per-user launchd service.
 
+## Homebrew installation
+
+Homebrew supports both macOS and Linux:
+
+```bash
+brew tap jordanhubbard/webmux https://github.com/jordanhubbard/webmux
+brew install jordanhubbard/webmux/webmux
+brew services start jordanhubbard/webmux/webmux
+```
+
+Run these commands as your normal user. Open http://localhost:8080, or run
+`webmux` for foreground operation. See [packaging](docs/packaging.md) for service
+requirements, upgrades, migration, and release bundles. The instructions below
+cover building and running from a source checkout.
+
 ## Prerequisites
 
 - A currently supported macOS release

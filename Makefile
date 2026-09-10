@@ -74,13 +74,21 @@ endif
 # ── Targets ────────────────────────────────────────────────────────
 .PHONY: all build deps check-guacd start stop restart status test test-unit test-e2e lint clean configure help \
        install uninstall release release-minor release-major changelog-init \
-       _start_manual _stop_manual
+       package _start_manual _stop_manual
 
 all: build
+
+# Platform-specific runtime bundle; use Node.js 24 and build from the lockfile.
+package:
+	@$(NODE) -e 'if (process.versions.node.split(".")[0] !== "24" || !["darwin", "linux"].includes(process.platform)) { console.error("Packaging requires Node.js 24 on macOS or Linux"); process.exit(1); }'
+	@cd "$(WEBMUX_DIR)" && $(NPM) ci --no-audit --no-fund
+	@cd "$(WEBMUX_DIR)" && $(NPM) run build
+	@$(NODE) scripts/package.cjs
 
 help:
 	@printf "$(C_BLD)$(C_MAG)▦ WebMux$(C_RST)$(C_DIM) — web-native terminal multiplexer$(C_RST)\n\n"
 	@printf "$(C_BLD)Targets:$(C_RST)\n"
+	@printf "  $(C_CYN)make package$(C_RST)        Build a macOS/Linux runtime bundle (Node.js 24)\n"
 	@printf "  $(C_CYN)make$(C_RST)               Build the application\n"
 	@printf "  $(C_CYN)make start$(C_RST)          Build and start the server\n"
 	@printf "  $(C_CYN)make stop$(C_RST)           Stop the running server\n"

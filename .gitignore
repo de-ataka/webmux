@@ -20,3 +20,6 @@ tests/e2e/.test-home/
 test-results/
 playwright-report/
 *~
+
+# Release bundles
+/dist/
