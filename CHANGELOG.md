@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.10] - 2026-09-10
+
+### Added
+- publish a tested Windows x64 runtime ZIP and per-user MSI with checksum files and foreground/service launchers
+
+### Fixed
+- document and continuously test the Homebrew 6 formula-trust bootstrap required before tapping the custom repository URL
+
 ## [1.3.9] - 2026-09-10
 
 ### Added
