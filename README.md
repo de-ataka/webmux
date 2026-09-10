@@ -28,9 +28,21 @@ A browser-based remote workspace for persistent terminal and desktop sessions. W
 
 ## Quick Start
 
-### Prerequisites
+### Homebrew (macOS and Linux)
 
-- Node.js >= 20
+```bash
+brew tap jordanhubbard/webmux https://github.com/jordanhubbard/webmux
+brew install jordanhubbard/webmux/webmux
+brew services start jordanhubbard/webmux/webmux
+```
+
+Open http://localhost:8080. Run services as your normal user so WebMux can access
+your SSH keys. See [packaging](docs/packaging.md) for upgrades, migration from a
+checkout, optional tools, and runtime release bundles.
+
+### Prerequisites (source builds)
+
+- Node.js >= 24
 - OpenSSH client (`ssh` on macOS/Linux, `ssh.exe` on `PATH` on Windows)
 - (Optional) `sshpass` for password-based SSH auth
 - (Optional) `mosh` on both ends for mosh transport
