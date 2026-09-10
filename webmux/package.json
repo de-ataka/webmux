@@ -6,6 +6,9 @@
     "backend",
     "frontend"
   ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",

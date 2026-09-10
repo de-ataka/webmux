@@ -5,7 +5,7 @@ WebMux runs natively on Linux using Unix pseudoterminals through `node-pty`. The
 ## Prerequisites
 
 - A supported 64-bit or ARM64 Linux distribution
-- Node.js 20 or newer
+- Node.js 24 LTS or newer
 - Git and OpenSSH Client
 - A C/C++ toolchain and Python if npm must compile a native dependency
 
@@ -16,7 +16,7 @@ sudo apt update
 sudo apt install git openssh-client build-essential python3
 ```
 
-Install Node.js 20 or newer using your distribution packages, NodeSource, or another trusted Node.js distribution. Verify it before building:
+Install Node.js 24 LTS or newer using your distribution packages, NodeSource, or another trusted Node.js distribution. Verify it before building:
 
 ```bash
 node --version
