@@ -446,16 +446,18 @@ describe('SessionBroker', () => {
     const handle = transportLauncher.getHandle(session.id) as unknown as { emit: (event: string, data: unknown) => void };
 
     handle.emit('data', 'hello from the PTY\r\n');
-    await broker.shutdown();
-
     const files = transcriptFiles();
     expect(files).toHaveLength(1);
     expect(files[0]).toMatch(new RegExp(`^session-${session.id}-\\d{8}T\\d{6}Z-g1-[a-f0-9]{8}\\.log$`));
     const file = path.join(tmpDir, 'logs', 'sessions', files[0]);
-    const content = fs.readFileSync(file, 'utf8');
-    expect(content).toContain('[webmux transcript started');
-    expect(content).toContain('hello from the PTY');
-    expect(content).toContain('reason=shutdown');
+    await broker.flushTranscript(session.id);
+    const liveContent = fs.readFileSync(file, 'utf8');
+    expect(liveContent).toContain('[webmux transcript started');
+    expect(liveContent).toContain('hello from the PTY');
+
+    await broker.shutdown();
+
+    expect(fs.readFileSync(file, 'utf8')).toContain('reason=shutdown');
     if (process.platform !== 'win32') {
       expect(fs.statSync(file).mode & 0o777).toBe(0o600);
       expect(fs.statSync(path.dirname(file)).mode & 0o777).toBe(0o700);
@@ -470,6 +472,44 @@ describe('SessionBroker', () => {
       expect.objectContaining({ type: 'session_transcript_started', session_id: session.id, path: file }),
       expect.objectContaining({ type: 'session_transcript_stopped', session_id: session.id, path: file, reason: 'shutdown' }),
     ]));
+  });
+
+  it('pauses and resumes the same launch transcript, recreating it if removed', async () => {
+    const broker = new SessionBroker();
+    await broker.initialize();
+    const session = await broker.create({ username: 'u', hostname: 'h' });
+    const handle = transportLauncher.getHandle(session.id) as unknown as { emit: (event: string, data: unknown) => void };
+
+    const started = await broker.toggleTranscript(session.id);
+    expect(started.enabled).toBe(true);
+    expect(started.file).toBeDefined();
+    handle.emit('data', 'before pause\r\n');
+    await broker.flushTranscript(session.id);
+
+    const paused = await broker.toggleTranscript(session.id);
+    expect(paused).toEqual({ enabled: false, file: started.file });
+    handle.emit('data', 'while paused\r\n');
+    expect(fs.readFileSync(started.file!, 'utf8')).not.toContain('while paused');
+
+    const resumed = await broker.toggleTranscript(session.id);
+    expect(resumed).toEqual({ enabled: true, file: started.file });
+    handle.emit('data', 'after resume\r\n');
+    await broker.flushTranscript(session.id);
+    const resumedContent = fs.readFileSync(started.file!, 'utf8');
+    expect(resumedContent).toContain('before pause');
+    expect(resumedContent).not.toContain('while paused');
+    expect(resumedContent).toContain('[webmux transcript resumed');
+    expect(resumedContent).toContain('after resume');
+    expect(transcriptFiles()).toHaveLength(1);
+
+    await broker.toggleTranscript(session.id);
+    fs.unlinkSync(started.file!);
+    const recreated = await broker.toggleTranscript(session.id);
+    expect(recreated).toEqual({ enabled: true, file: started.file });
+    handle.emit('data', 'after recreation\r\n');
+    await broker.flushTranscript(session.id);
+    expect(fs.readFileSync(started.file!, 'utf8')).toContain('after recreation');
+    await broker.shutdown();
   });
 
   it('uses a new transcript file after reconnecting', async () => {

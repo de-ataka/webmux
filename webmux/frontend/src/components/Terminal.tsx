@@ -9,6 +9,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { useInputBroadcast } from '../contexts/InputBroadcastContext';
 import { installTerminalQuerySuppressors, shouldSuppressTerminalInput } from '../utils/terminalInput';
 import { TERMINAL_FONTS_LOADED_EVENT, loadTerminalFontFamily, normalizeTerminalFontFamily } from '../utils/terminalFont';
+import { isTranscriptToggleKey } from '../utils/terminalShortcuts';
 
 export const DEFAULT_TERMINAL_THEME: TerminalTheme = {
   background: '#0d0d1a',
@@ -76,6 +77,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   const [searchQuery, setSearchQuery] = useState('');
   const [searchIndex, setSearchIndex] = useState(-1);
   const [searchCount, setSearchCount] = useState(0);
+  const [transcriptEnabled, setTranscriptEnabled] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { registerSend, unregisterSend, routeInput, setFocusedSessionId, broadcastMode, focusedSessionId } = useInputBroadcast();
@@ -129,6 +131,11 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
         break;
       case 'status':
         if (msg.state) onStateChangeRef.current(msg.state);
+        if (typeof msg.transcript_enabled === 'boolean') setTranscriptEnabled(msg.transcript_enabled);
+        break;
+      case 'transcript_status':
+        if (typeof msg.transcript_enabled === 'boolean') setTranscriptEnabled(msg.transcript_enabled);
+        if (msg.message) console.error(`Transcript logging: ${msg.message}`);
         break;
       case 'viewer_join':
       case 'viewer_leave':
@@ -233,12 +240,17 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
     };
     termEl.addEventListener('wheel', wheelHandler, { passive: true });
 
-    // Cmd/Ctrl+F to open search
+    // Cmd/Ctrl+F opens search; Ctrl+Shift+L toggles this session's transcript.
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'f' && e.type === 'keydown') {
         e.preventDefault();
         setShowSearch(true);
         setTimeout(() => searchInputRef.current?.focus(), 0);
+        return false;
+      }
+      if (isTranscriptToggleKey(e)) {
+        e.preventDefault();
+        wsHandleRef.current?.send({ type: 'transcript_toggle' });
         return false;
       }
       return true;
@@ -386,6 +398,14 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
           <button onClick={() => { const opts = { caseSensitive: false, decorations: { matchOverviewRuler: '#7c6af7', activeMatchColorOverviewRuler: '#50fa7b', matchBackground: '#7c6af733', activeMatchBackground: '#50fa7b55' } }; searchAddonRef.current?.findNext(searchQuery, opts); }} style={{ background: '#1a1a3a', border: '1px solid #333', borderRadius: 3, color: '#aaa', fontSize: 11, cursor: 'pointer', padding: '2px 6px' }} title="Next (Enter)">{'\u25bc'}</button>
           <button onClick={() => { searchAddonRef.current?.clearDecorations(); setShowSearch(false); setSearchQuery(''); setSearchIndex(-1); setSearchCount(0); termRef.current?.focus(); }} style={{ background: '#1a1a3a', border: '1px solid #333', borderRadius: 3, color: '#ff8888', fontSize: 11, cursor: 'pointer', padding: '2px 6px' }} title="Close (Escape)">{'\u2715'}</button>
         </div>
+      )}
+      {transcriptEnabled && (
+        <div
+          role="status"
+          aria-label="Session transcript logging active"
+          title="Session transcript logging active (Ctrl+Shift+L to pause)"
+          style={{ position: 'absolute', right: 8, bottom: 6, zIndex: 9, color: '#ff6666', background: 'rgba(13,13,26,0.8)', borderRadius: 3, padding: '2px 5px', fontSize: 10, fontWeight: 700, pointerEvents: 'none' }}
+        >REC</div>
       )}
       {showOverlay && (
         <div style={{

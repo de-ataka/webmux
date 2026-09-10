@@ -94,7 +94,7 @@ export interface AuthUserInfo {
 }
 
 export interface WebSocketMessage {
-  type: 'input' | 'resize' | 'output' | 'status' | 'focus' | 'viewer_join' | 'viewer_leave' | 'error';
+  type: 'input' | 'resize' | 'output' | 'status' | 'focus' | 'viewer_join' | 'viewer_leave' | 'error' | 'transcript_toggle' | 'transcript_status';
   session_id?: string;
   data?: string;
   cols?: number;
@@ -104,6 +104,8 @@ export interface WebSocketMessage {
   viewer_count?: number;
   focus_owner?: string;
   message?: string;
+  transcript_enabled?: boolean;
+  transcript_file?: string;
 }
 
 export interface CreateSessionRequest {
