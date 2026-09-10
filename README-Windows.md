@@ -5,7 +5,7 @@ WebMux runs natively on modern Windows using ConPTY through `node-pty`. The back
 ## Prerequisites
 
 1. A current 64-bit or ARM64 Windows release with ConPTY support. Installing the Windows service also requires .NET Framework 4.6.1 or newer, included with supported Windows releases.
-2. Node.js 20 or newer.
+2. Node.js 24 LTS or newer.
 3. Microsoft OpenSSH Client, with `ssh.exe` available through `PATH`.
 4. Git when installing from a source checkout.
 

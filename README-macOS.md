@@ -5,7 +5,7 @@ WebMux runs natively on macOS using Unix pseudoterminals through `node-pty`. The
 ## Prerequisites
 
 - A currently supported macOS release
-- Node.js 20 or newer
+- Node.js 24 LTS or newer
 - Git
 - The built-in OpenSSH client
 - Xcode Command Line Tools if npm must compile a native dependency
