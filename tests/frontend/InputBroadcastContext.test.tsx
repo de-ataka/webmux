@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { InputBroadcastProvider, useInputBroadcast } from '@frontend/contexts/InputBroadcastContext';
 
 // Test component that exposes context state and actions
 function TestHarness({ sessionIds }: { sessionIds: string[] }) {
-  const { broadcastMode, setBroadcastMode, focusedSessionId, setFocusedSessionId, registerSend, unregisterSend, routeInput } = useInputBroadcast();
+  const { broadcastMode, setBroadcastMode, focusedSessionId, setFocusedSessionId, routeInput } = useInputBroadcast();
 
   return (
     <div>

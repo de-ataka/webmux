@@ -8,7 +8,22 @@ interface RdpViewerProps {
   sessionId: string;
   mode: 'thumbnail' | 'fullscreen';
   onStateChange?: (state: 'connecting' | 'connected' | 'disconnected' | 'error') => void;
-  clientRef?: React.MutableRefObject<any>;
+  clientRef?: React.MutableRefObject<RdpClientControl | null>;
+}
+
+export interface RdpClientControl {
+  createClipboardStream(mimetype: string): unknown;
+  sendKeyEvent(pressed: 0 | 1, keysym: number): void;
+}
+
+interface GuacamoleMouseState {
+  x: number;
+  y: number;
+  left: boolean;
+  middle: boolean;
+  right: boolean;
+  up: boolean;
+  down: boolean;
 }
 
 export function RdpViewer({ sessionId, mode, onStateChange, clientRef }: RdpViewerProps) {
@@ -41,9 +56,9 @@ export function RdpViewer({ sessionId, mode, onStateChange, clientRef }: RdpView
 
     if (mode === 'fullscreen') {
       const mouse = new Guacamole.Mouse(containerRef.current);
-      mouse.onmousedown = (state: any) => { if (active) client.sendMouseState(state); };
-      mouse.onmouseup = (state: any) => { if (active) client.sendMouseState(state); };
-      mouse.onmousemove = (state: any) => { if (active) client.sendMouseState(state); };
+      mouse.onmousedown = (state: GuacamoleMouseState) => { if (active) client.sendMouseState(state); };
+      mouse.onmouseup = (state: GuacamoleMouseState) => { if (active) client.sendMouseState(state); };
+      mouse.onmousemove = (state: GuacamoleMouseState) => { if (active) client.sendMouseState(state); };
 
       const keyboard = new Guacamole.Keyboard(document);
       keyboard.onkeydown = (keysym: number) => { if (active) client.sendKeyEvent(1, keysym); };
