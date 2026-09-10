@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { VncViewer } from './VncViewer';
+import type { VncClientControl } from './VncViewer';
 import type { VncSession } from '../types';
 
 interface VncFullscreenProps {
@@ -13,7 +14,7 @@ const TOP_BAR_H = 36;
 
 export function VncFullscreen({ session, vncPassword, onBack, onDisconnect }: VncFullscreenProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const rfbRef = useRef<any>(null);
+  const rfbRef = useRef<VncClientControl | null>(null);
 
   const handleSendCtrlAltDel = useCallback(() => {
     rfbRef.current?.sendCtrlAltDel();

@@ -9,7 +9,12 @@ interface VncViewerProps {
   vncPassword?: string;
   mode: 'thumbnail' | 'fullscreen';
   onStateChange?: (state: 'connecting' | 'connected' | 'disconnected' | 'error') => void;
-  rfbRef?: React.MutableRefObject<any>;
+  rfbRef?: React.MutableRefObject<VncClientControl | null>;
+}
+
+export interface VncClientControl {
+  clipboardPasteFrom(text: string): void;
+  sendCtrlAltDel(): void;
 }
 
 export function VncViewer({ sessionId, vncPassword, mode, onStateChange, rfbRef }: VncViewerProps) {

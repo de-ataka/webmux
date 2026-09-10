@@ -3,6 +3,7 @@ import { useState, useRef, useCallback } from 'react';
 // @ts-ignore
 import Guacamole from 'guacamole-common-js';
 import { RdpViewer } from './RdpViewer';
+import type { RdpClientControl } from './RdpViewer';
 import type { RdpSession } from '../types';
 
 interface RdpFullscreenProps {
@@ -20,7 +21,7 @@ const KEY_DELETE = 0xFFFF;
 
 export function RdpFullscreen({ session, onBack, onDisconnect }: RdpFullscreenProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const clientRef = useRef<any>(null);
+  const clientRef = useRef<RdpClientControl | null>(null);
 
   const handleSendCtrlAltDel = useCallback(() => {
     const c = clientRef.current;
