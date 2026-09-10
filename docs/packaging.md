@@ -129,5 +129,4 @@ node scripts/update-homebrew.cjs vX.Y.Z
 This downloads the tagged source archive and updates its URL and SHA-256. Commit
 the formula update through a pull request; after merging, users receive it through
 `brew update` and `brew upgrade`. Do not point the stable formula at an unpublished
-tag. The initial formula packages v1.3.8; runtime bundles start with the first
-release containing this workflow.
+tag. Runtime bundles are published starting with v1.3.9.
