@@ -5,6 +5,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.7] - 2026-09-09
+
+### Added
+- add Ctrl+Shift+L to pause or resume transcript logging for the focused terminal
+- show a REC indicator while transcript logging is active
+
 ## [1.3.6] - 2026-09-08
 
 ### Fixed
