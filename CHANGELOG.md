@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.9] - 2026-09-10
+
+### Added
+- install WebMux with one Homebrew formula on macOS and Linux, including per-user launchd and systemd services
+- publish macOS ARM64 and Linux x86-64 runtime bundles with SHA-256 checksums
+- test Homebrew installations and extracted bundles on both platforms in CI
+
+### Documentation
+- document Homebrew installation, migration from source checkouts, upgrades, and configuration preservation
+
 ## [1.3.8] - 2026-09-09
 
 ### Changed
