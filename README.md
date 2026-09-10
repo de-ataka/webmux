@@ -145,6 +145,8 @@ The optional `terminal_grid` settings cap the number of columns and rows availab
 
 Set `session_logging.enabled: true` to record every newly launched SSH, mosh, exec, and agent terminal under `WEBMUX_HOME/logs/sessions/`. Logging begins when WebMux attaches to the PTY and continues while browser viewers detach and reattach. Each initial connection or reconnect receives a separate `session-<id>-<UTC timestamp>-g<generation>-<nonce>.log` file with owner-only permissions on POSIX systems. Start, stop, and error records are also written to the daily JSONL audit stream.
 
+Press `Ctrl+Shift+L` in a focused terminal to pause or resume transcript logging for that session. This per-session control works regardless of the global default. Pausing preserves the transcript; resuming the same session launch appends to that file, or recreates it at the same path if it was removed. A reconnect is a new launch and receives a new transcript file.
+
 Transcripts contain raw terminal output, including ANSI control sequences and commands echoed by the remote shell. They can contain paths, tokens, and other secrets; access and retention are the operator's responsibility. WebMux does not rotate or delete transcript files. Changing this setting affects newly launched or reconnected terminals, not PTYs that are already running. VNC and RDP pixel streams are not recorded.
 
 Optional tmux-backed agent views are configured under `app.agents` and are disabled by default. See [Agent Views](docs/agent-views.md) and the sample config at [webmux/examples/agent-views/app.yaml](webmux/examples/agent-views/app.yaml).

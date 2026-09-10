@@ -264,7 +264,13 @@ export class SessionBroker extends EventEmitter {
   }
 
   private wireEvents(session: Session, ptyProcess: pty.IPty, initialCmd: string | undefined, generation: number): void {
-    this.transcriptLogger.start(session, generation);
+    const transcriptFile = this.transcriptLogger.start(session, generation);
+    presenceService.broadcastToSession(session.id, {
+      type: 'transcript_status',
+      session_id: session.id,
+      transcript_enabled: transcriptFile !== undefined,
+      transcript_file: transcriptFile,
+    });
     let firstData = true;
     let cmdInjected = false;
     const suppressAgentOutputUntil = session.agent_role === 'attach'
@@ -320,6 +326,7 @@ export class SessionBroker extends EventEmitter {
         session_id: session.id,
         state: 'disconnected',
         message: `Process exited with code ${exitCode}`,
+        transcript_enabled: false,
       });
       this.persistSessions();
       persistence.appendEvent({ type: 'session_exited', session_id: session.id, exit_code: exitCode });
@@ -365,6 +372,23 @@ export class SessionBroker extends EventEmitter {
 
   getScrollback(sessionId: string): string {
     return this.scrollback.get(sessionId) || '';
+  }
+
+  isTranscriptLogging(sessionId: string): boolean {
+    return this.transcriptLogger.isActive(sessionId);
+  }
+
+  async toggleTranscript(sessionId: string): Promise<{ enabled: boolean; file?: string }> {
+    const session = this.sessions.get(sessionId);
+    const generation = this.launchGenerations.get(sessionId);
+    if (!session || generation === undefined) throw new Error(`Session ${sessionId} not found`);
+    if (!transportLauncher.isAlive(sessionId)) throw new Error('Cannot log a disconnected session');
+    return this.transcriptLogger.toggle(session, generation);
+  }
+
+  async flushTranscript(sessionId: string): Promise<void> {
+    const generation = this.launchGenerations.get(sessionId);
+    if (generation !== undefined) await this.transcriptLogger.flush(sessionId, generation);
   }
 
   async delete(sessionId: string, options: DeleteSessionOptions = {}): Promise<void> {

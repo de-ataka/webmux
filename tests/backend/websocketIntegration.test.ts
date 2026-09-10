@@ -252,6 +252,22 @@ describe('WebSocket Integration', () => {
     client.ws.close();
   });
 
+  it('toggles transcript logging for the connected session', async () => {
+    const session = await sessionBroker.create({ username: 'user', hostname: 'test.example.com' });
+    const client = await createClient(session.id);
+    const initial = await client.waitFor(m => m.type === 'status');
+    expect(initial.transcript_enabled).toBe(false);
+
+    client.ws.send(JSON.stringify({ type: 'transcript_toggle' }));
+    const started = await client.waitFor(m => m.type === 'transcript_status' && m.transcript_enabled === true);
+    expect(started.transcript_file).toContain(path.join('logs', 'sessions', `session-${session.id}-`));
+
+    client.ws.send(JSON.stringify({ type: 'transcript_toggle' }));
+    const paused = await client.waitFor(m => m.type === 'transcript_status' && m.transcript_enabled === false);
+    expect(paused.transcript_file).toBe(started.transcript_file);
+    client.ws.close();
+  });
+
   it('handles resize messages', async () => {
     const session = await sessionBroker.create({ username: 'user', hostname: 'test.example.com' });
     const client = await createClient(session.id);

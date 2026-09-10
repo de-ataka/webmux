@@ -58,6 +58,7 @@ export function HelpDialog({ onClose }: HelpDialogProps) {
             <Row label="Normal typing" desc="Input goes to the currently focused terminal tile." />
             <Row label="Ctrl + Shift + <" desc="Focus the previous terminal tile." />
             <Row label="Ctrl + Shift + >" desc="Focus the next terminal tile." />
+            <Row label="Ctrl + Shift + L" desc="Start or pause transcript logging for the focused terminal. Resuming appends to the current launch's log." />
             <Row label="Type to All" desc="When enabled (orange bar), every keystroke is sent to all open sessions simultaneously. Click the button again to disable." />
           </Section>
 

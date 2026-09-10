@@ -68,6 +68,7 @@ export function setupWebSocket(wss: WebSocketServer): void {
       session_id: sessionId,
       state: session.state,
       viewer_id: viewerId,
+      transcript_enabled: sessionBroker.isTranscriptLogging(sessionId),
     }));
 
     // Replay scrollback so late-joining viewers see prior output
@@ -104,6 +105,26 @@ export function setupWebSocket(wss: WebSocketServer): void {
 
         case 'focus':
           presenceService.takeFocus(viewerId, sessionId);
+          break;
+
+        case 'transcript_toggle':
+          void sessionBroker.toggleTranscript(sessionId)
+            .then(result => {
+              presenceService.broadcastToSession(sessionId, {
+                type: 'transcript_status',
+                session_id: sessionId,
+                transcript_enabled: result.enabled,
+                transcript_file: result.file,
+              });
+            })
+            .catch(error => {
+              presenceService.sendToViewer(viewerId, {
+                type: 'transcript_status',
+                session_id: sessionId,
+                transcript_enabled: sessionBroker.isTranscriptLogging(sessionId),
+                message: (error as Error).message,
+              });
+            });
           break;
 
         default:
