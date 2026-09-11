@@ -122,6 +122,7 @@ export type AgentStatusSource = 'hook' | 'tmux' | 'webmux' | 'none';
 
 export interface HostEntry {
   id: string;
+  name?: string;
   hostname: string;
   port: number;
   username: string;

@@ -28,6 +28,7 @@ router.post('/', (req: Request, res: Response) => {
     const config = persistence.loadHosts();
     const host: HostEntry = {
       id: body.id || uuidv4(),
+      name: body.name?.trim() || undefined,
       hostname: body.hostname,
       port: body.port || 22,
       username: body.username || '',

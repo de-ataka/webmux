@@ -96,8 +96,17 @@ export function RdpConnectionDialog({ onConnect, onClose, suggestedRow, suggeste
                     title={`RDP connect to ${h.hostname}:${h.rdp_port || 3389}`}
                     disabled={submitting}
                   >
-                    <span style={styles.hostCardName}>{h.hostname}</span>
-                    <span style={styles.hostCardPort}>:{h.rdp_port || 3389}</span>
+                    {h.name ? (
+                      <>
+                        <span style={styles.hostCardName}>{h.name}</span>
+                        <span style={styles.hostCardPort}>({h.hostname}:{h.rdp_port || 3389})</span>
+                      </>
+                    ) : (
+                      <>
+                        <span style={styles.hostCardName}>{h.hostname}</span>
+                        <span style={styles.hostCardPort}>:{h.rdp_port || 3389}</span>
+                      </>
+                    )}
                   </button>
                 ))}
               </div>

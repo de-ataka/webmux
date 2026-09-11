@@ -65,6 +65,7 @@ export interface NamedTheme {
 
 export interface HostEntry {
   id: string;
+  name?: string;
   hostname: string;
   port: number;
   username: string;

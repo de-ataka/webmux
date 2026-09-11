@@ -90,8 +90,17 @@ export function VncConnectionDialog({ onConnect, onClose, suggestedRow, suggeste
                     title={`VNC connect to ${h.hostname}:${h.vnc_port || 5900}`}
                     disabled={submitting}
                   >
-                    <span style={styles.hostCardName}>{h.hostname}</span>
-                    <span style={styles.hostCardPort}>:{h.vnc_port || 5900}</span>
+                    {h.name ? (
+                      <>
+                        <span style={styles.hostCardName}>{h.name}</span>
+                        <span style={styles.hostCardPort}>({h.hostname}:{h.vnc_port || 5900})</span>
+                      </>
+                    ) : (
+                      <>
+                        <span style={styles.hostCardName}>{h.hostname}</span>
+                        <span style={styles.hostCardPort}>:{h.vnc_port || 5900}</span>
+                      </>
+                    )}
                   </button>
                 ))}
               </div>

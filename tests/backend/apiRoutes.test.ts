@@ -95,6 +95,25 @@ describe('API Routes', () => {
       const res = await request(app).post('/api/hosts').send({ port: 22 });
       expect(res.status).toBe(400);
     });
+
+    it('stores an optional friendly name', async () => {
+      const res = await request(app)
+        .post('/api/hosts')
+        .send({ hostname: 'named.example.com', name: '本番サーバー' });
+      expect(res.status).toBe(201);
+      expect(res.body.name).toBe('本番サーバー');
+
+      const list = await request(app).get('/api/hosts');
+      expect(list.body.find((h: { id: string }) => h.id === res.body.id).name).toBe('本番サーバー');
+    });
+
+    it('omits name when not provided', async () => {
+      const res = await request(app)
+        .post('/api/hosts')
+        .send({ hostname: 'unnamed.example.com' });
+      expect(res.status).toBe(201);
+      expect(res.body.name).toBeUndefined();
+    });
   });
 
   describe('PUT /api/hosts/:id', () => {

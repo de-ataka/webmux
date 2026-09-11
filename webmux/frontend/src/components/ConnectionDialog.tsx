@@ -12,6 +12,7 @@ interface ConnectionDialogProps {
 export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCol }: ConnectionDialogProps) {
   const [hosts, setHosts] = useState<HostEntry[]>([]);
   const [keys, setKeys] = useState<Pick<KeyEntry, 'id' | 'type' | 'encrypted' | 'description'>[]>([]);
+  const [name, setName] = useState('');
   const [hostname, setHostname] = useState('');
   const [port, setPort] = useState(22);
   const [username, setUsername] = useState('');
@@ -67,6 +68,7 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
     setSubmitting(true);
     try {
       const saved = await api.createHost({
+        name: name.trim() || undefined,
         hostname: hostname.trim(),
         port,
         username: username.trim(),
@@ -137,29 +139,41 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
             <div style={styles.field}>
               <label style={styles.label}>Saved Hosts</label>
               <div style={styles.hostGrid}>
-                {hosts.map(h => (
-                  <div key={h.id} style={styles.hostCard}>
-                    <button
-                      type="button"
-                      style={styles.hostCardBtn}
-                      onClick={() => handleQuickConnect(h)}
-                      title={`Connect to ${h.username ? h.username + '@' : ''}${h.hostname}`}
-                      disabled={submitting}
-                    >
-                      {h.username && <span style={styles.hostCardUser}>{h.username}@</span>}
-                      <span style={styles.hostCardName}>{h.hostname}</span>
-                      {h.port !== 22 && <span style={styles.hostCardPort}>:{h.port}</span>}
-                    </button>
-                    <button
-                      type="button"
-                      style={styles.hostDeleteBtn}
-                      onClick={() => handleDeleteHost(h.id)}
-                      title="Remove saved host"
-                    >
-                      {'\u2715'}
-                    </button>
-                  </div>
-                ))}
+                {hosts.map(h => {
+                  const conn = `${h.username ? h.username + '@' : ''}${h.hostname}${h.port !== 22 ? ':' + h.port : ''}`;
+                  return (
+                    <div key={h.id} style={styles.hostCard}>
+                      <button
+                        type="button"
+                        style={styles.hostCardBtn}
+                        onClick={() => handleQuickConnect(h)}
+                        title={`Connect to ${conn}`}
+                        disabled={submitting}
+                      >
+                        {h.name ? (
+                          <>
+                            <span style={styles.hostCardName}>{h.name}</span>
+                            <span style={styles.hostCardSub}>({conn})</span>
+                          </>
+                        ) : (
+                          <>
+                            {h.username && <span style={styles.hostCardUser}>{h.username}@</span>}
+                            <span style={styles.hostCardName}>{h.hostname}</span>
+                            {h.port !== 22 && <span style={styles.hostCardPort}>:{h.port}</span>}
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        style={styles.hostDeleteBtn}
+                        onClick={() => handleDeleteHost(h.id)}
+                        title="Remove saved host"
+                      >
+                        {'\u2715'}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -170,6 +184,19 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
               <span style={styles.dividerText}>or connect to a new host</span>
             </div>
           )}
+
+          {/* Name (optional friendly label) */}
+          <div style={styles.field}>
+            <label style={styles.label}>Name (optional)</label>
+            <input
+              style={styles.input}
+              type="text"
+              placeholder="e.g. 本番サーバー"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              data-1p-ignore
+            />
+          </div>
 
           {/* Hostname + Port */}
           <div style={styles.field}>
@@ -356,6 +383,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
   hostCardName: {
     fontWeight: 500,
+  },
+  hostCardSub: {
+    color: '#888',
+    fontSize: 11,
   },
   hostCardPort: {
     color: '#666',

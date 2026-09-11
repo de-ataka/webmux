@@ -192,6 +192,36 @@ describe('ConnectionDialog', () => {
     });
   });
 
+  it('shows a friendly name with connection details when the saved host has one', async () => {
+    mockApi.getHosts.mockResolvedValue([
+      { id: 'h1', name: '本番サーバー', hostname: 'host1.example.com', port: 22, username: 'admin', tags: ['linux'], mosh_allowed: false },
+    ]);
+    render(<ConnectionDialog onConnect={onConnect} onClose={onClose} />);
+    await waitFor(() => {
+      expect(screen.getByText('本番サーバー')).toBeDefined();
+      expect(screen.getByText('(admin@host1.example.com)')).toBeDefined();
+    });
+    expect(screen.queryByText('host1.example.com')).toBeNull();
+  });
+
+  it('sends the entered name when saving a new host', async () => {
+    render(<ConnectionDialog onConnect={onConnect} onClose={onClose} />);
+    fireEvent.change(screen.getByPlaceholderText('e.g. 本番サーバー'), { target: { value: '検証環境' } });
+    fireEvent.change(screen.getByPlaceholderText('hostname or IP'), { target: { value: 'new.example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('user'), { target: { value: 'admin' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Save & Connect')).toBeDefined();
+    });
+    fireEvent.click(screen.getByText('Save & Connect'));
+
+    await waitFor(() => {
+      expect(mockApi.createHost).toHaveBeenCalledWith(
+        expect.objectContaining({ name: '検証環境', hostname: 'new.example.com' })
+      );
+    });
+  });
+
   it('quick-connects when clicking a saved host card', async () => {
     render(<ConnectionDialog onConnect={onConnect} onClose={onClose} />);
     await waitFor(() => {
