@@ -1,5 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { api } from '../utils/api';
+import { ImportSshConfigDialog } from './ImportSshConfigDialog';
 import type { HostEntry, KeyEntry, CreateSessionRequest } from '../types';
 
 interface ConnectionDialogProps {
@@ -24,6 +25,7 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editingHostId, setEditingHostId] = useState<string | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   useEffect(() => {
     api.getHosts().then(setHosts).catch(() => {});
@@ -195,6 +197,16 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
         </div>
 
         <form onSubmit={handleConnect} style={styles.form}>
+          {!editingHostId && (
+            <button
+              type="button"
+              style={styles.importLink}
+              onClick={() => setShowImportDialog(true)}
+            >
+              Import from ~/.ssh/config
+            </button>
+          )}
+
           {/* Saved hosts as quick-connect cards */}
           {hosts.length > 0 && (
             <div style={styles.field}>
@@ -378,6 +390,13 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
           </div>
         </form>
       </div>
+
+      {showImportDialog && (
+        <ImportSshConfigDialog
+          onClose={() => setShowImportDialog(false)}
+          onImported={created => setHosts(prev => [...prev, ...created])}
+        />
+      )}
     </div>
   );
 }
@@ -495,6 +514,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 10,
     cursor: 'pointer',
     lineHeight: 1,
+  },
+  importLink: {
+    alignSelf: 'flex-start',
+    background: 'none',
+    border: 'none',
+    color: '#7c6af7',
+    fontSize: 12,
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    padding: 0,
   },
   divider: {
     display: 'flex',

@@ -13,6 +13,7 @@ import type {
   AgentsConfig,
   RdpSession,
   Session,
+  SshConfigCandidate,
   VncSession,
 } from '../types';
 import { signalAuthExpired } from './authSession';
@@ -157,6 +158,12 @@ export const api = {
     request<HostEntry>(`/hosts/${id}`, { method: 'PUT', body: JSON.stringify(host) }),
   deleteHost: (id: string) =>
     request<void>(`/hosts/${id}`, { method: 'DELETE' }),
+  getSshConfigHosts: () => request<SshConfigCandidate[]>('/hosts/ssh-config'),
+  importSshConfigHosts: (aliases: string[]) =>
+    request<{ created: HostEntry[]; skipped: string[] }>('/hosts/ssh-config/import', {
+      method: 'POST',
+      body: JSON.stringify({ aliases }),
+    }),
 
   // Keys
   getKeys: () => request<Pick<KeyEntry, 'id' | 'type' | 'encrypted' | 'description'>[]>('/keys'),
