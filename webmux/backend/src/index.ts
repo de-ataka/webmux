@@ -38,7 +38,7 @@ async function main(): Promise<void> {
     appConfig = {
       app: {
         name: 'webmux',
-        listen_host: '0.0.0.0',
+        listen_host: ['0.0.0.0'],
         http_port: 8080,
         https_port: 8443,
         secure_mode: false,
@@ -141,9 +141,11 @@ async function main(): Promise<void> {
     });
   }
 
-  // Start HTTP server
+  // Start HTTP server(s) — one per configured listen_host address
+  const listenHosts = Array.isArray(appConfig.app.listen_host)
+    ? appConfig.app.listen_host
+    : [appConfig.app.listen_host];
   const httpPort = Number(process.env.HTTP_PORT) || appConfig.app.http_port;
-  const httpServer = http.createServer(app);
   const wss = new WebSocketServer({ noServer: true });
   setupWebSocket(wss);
   const wssVnc = new WebSocketServer({ noServer: true });
@@ -151,48 +153,12 @@ async function main(): Promise<void> {
   const wssRdp = new WebSocketServer({ noServer: true });
   setupRdpWebSocket(wssRdp);
 
-  httpServer.on('upgrade', (request, socket, head) => {
-    const pathname = (request.url || '').split('?')[0];
-    if (pathname.startsWith('/api/term/')) {
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
-      });
-    } else if (pathname.startsWith('/api/vnc/ws/')) {
-      wssVnc.handleUpgrade(request, socket, head, (ws) => {
-        wssVnc.emit('connection', ws, request);
-      });
-    } else if (pathname.startsWith('/api/rdp/ws/')) {
-      wssRdp.handleUpgrade(request, socket, head, (ws) => {
-        wssRdp.emit('connection', ws, request);
-      });
-    } else {
-      socket.destroy();
-    }
-  });
-
-  httpServer.listen(httpPort, appConfig.app.listen_host, () => {
-    console.log(`WebMux HTTP server listening on ${appConfig.app.listen_host}:${httpPort}`);
-  });
-
-  // Start HTTPS server if TLS cert exists
-  let httpsServer: https.Server | undefined;
-  let wssSecure: WebSocketServer | undefined;
-  const certFile = persistence.configPath('tls/cert.pem');
-  const keyFile = persistence.configPath('tls/key.pem');
-  if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
-    const tlsOptions = {
-      cert: fs.readFileSync(certFile),
-      key: fs.readFileSync(keyFile),
-    };
-    const httpsPort = Number(process.env.HTTPS_PORT) || appConfig.app.https_port;
-    httpsServer = https.createServer(tlsOptions, app);
-    wssSecure = new WebSocketServer({ noServer: true });
-    setupWebSocket(wssSecure);
-    httpsServer.on('upgrade', (request, socket, head) => {
+  const attachUpgradeHandler = (server: http.Server | https.Server, termWss: WebSocketServer): void => {
+    server.on('upgrade', (request, socket, head) => {
       const pathname = (request.url || '').split('?')[0];
       if (pathname.startsWith('/api/term/')) {
-        wssSecure!.handleUpgrade(request, socket, head, (ws) => {
-          wssSecure!.emit('connection', ws, request);
+        termWss.handleUpgrade(request, socket, head, (ws) => {
+          termWss.emit('connection', ws, request);
         });
       } else if (pathname.startsWith('/api/vnc/ws/')) {
         wssVnc.handleUpgrade(request, socket, head, (ws) => {
@@ -206,8 +172,37 @@ async function main(): Promise<void> {
         socket.destroy();
       }
     });
-    httpsServer.listen(httpsPort, appConfig.app.listen_host, () => {
-      console.log(`WebMux HTTPS server listening on ${appConfig.app.listen_host}:${httpsPort}`);
+  };
+
+  const httpServers: http.Server[] = listenHosts.map(host => {
+    const server = http.createServer(app);
+    attachUpgradeHandler(server, wss);
+    server.listen(httpPort, host, () => {
+      console.log(`WebMux HTTP server listening on ${host}:${httpPort}`);
+    });
+    return server;
+  });
+
+  // Start HTTPS server(s) if TLS cert exists
+  let httpsServers: https.Server[] = [];
+  let wssSecure: WebSocketServer | undefined;
+  const certFile = persistence.configPath('tls/cert.pem');
+  const keyFile = persistence.configPath('tls/key.pem');
+  if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
+    const tlsOptions = {
+      cert: fs.readFileSync(certFile),
+      key: fs.readFileSync(keyFile),
+    };
+    const httpsPort = Number(process.env.HTTPS_PORT) || appConfig.app.https_port;
+    wssSecure = new WebSocketServer({ noServer: true });
+    setupWebSocket(wssSecure);
+    httpsServers = listenHosts.map(host => {
+      const server = https.createServer(tlsOptions, app);
+      attachUpgradeHandler(server, wssSecure!);
+      server.listen(httpsPort, host, () => {
+        console.log(`WebMux HTTPS server listening on ${host}:${httpsPort}`);
+      });
+      return server;
     });
   }
 
@@ -234,8 +229,8 @@ async function main(): Promise<void> {
     stopPurgeTimer();
     await persistence.close();
 
-    httpServer.close();
-    httpsServer?.close();
+    httpServers.forEach(server => server.close());
+    httpsServers.forEach(server => server.close());
 
     process.exit(0);
   };

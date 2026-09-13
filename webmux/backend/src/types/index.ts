@@ -1,7 +1,7 @@
 export interface AppConfig {
   app: {
     name: string;
-    listen_host: string;
+    listen_host: string | string[];
     http_port: number;
     https_port: number;
     secure_mode: boolean;

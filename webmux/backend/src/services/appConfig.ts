@@ -241,6 +241,19 @@ export function normalizeAgentsConfig(config: AppConfig): NormalizedAgentsConfig
   };
 }
 
+export function normalizeListenHost(value: unknown): string[] {
+  const raw: unknown[] = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(',')
+      : [];
+  const hosts = raw
+    .map(entry => (typeof entry === 'string' ? entry.trim() : ''))
+    .filter(entry => entry.length > 0);
+  const unique = Array.from(new Set(hosts));
+  return unique.length > 0 ? unique : ['0.0.0.0'];
+}
+
 function normalizeHostSwitcher(raw: HostSwitcherConfig | undefined): Required<HostSwitcherConfig> {
   return {
     enabled: raw?.enabled === true,
@@ -257,6 +270,7 @@ export function normalizeAppConfig(config: AppConfig): AppConfig {
   return {
     app: {
       ...config.app,
+      listen_host: normalizeListenHost(config.app.listen_host),
       terminal_grid: {
         ...config.app.terminal_grid,
         max_cols: config.app.terminal_grid?.max_cols ?? null,
