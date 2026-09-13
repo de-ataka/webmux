@@ -10,6 +10,7 @@ const mockApi = vi.hoisted(() => ({
     { id: 'k1', type: 'rsa', encrypted: false, description: 'Test Key' },
   ]),
   createHost: vi.fn().mockResolvedValue({ id: 'h-new', hostname: 'new.example.com', port: 22, tags: [], mosh_allowed: false }),
+  updateHost: vi.fn().mockResolvedValue({ id: 'h1', hostname: 'updated.example.com', port: 22, username: 'admin', tags: ['linux'], mosh_allowed: false }),
   deleteHost: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -31,6 +32,7 @@ describe('ConnectionDialog', () => {
       { id: 'k1', type: 'rsa', encrypted: false, description: 'Test Key' },
     ]);
     mockApi.createHost.mockResolvedValue({ id: 'h-new', hostname: 'new.example.com', port: 22, tags: [], mosh_allowed: false });
+    mockApi.updateHost.mockResolvedValue({ id: 'h1', hostname: 'updated.example.com', port: 22, username: 'admin', tags: ['linux'], mosh_allowed: false });
     mockApi.deleteHost.mockResolvedValue(undefined);
   });
 
@@ -327,6 +329,74 @@ describe('ConnectionDialog', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Connection refused')).toBeDefined();
+    });
+  });
+
+  it('opens edit mode prefilled with the saved host data', async () => {
+    mockApi.getHosts.mockResolvedValue([
+      { id: 'h1', name: '本番サーバー', hostname: 'host1.example.com', port: 2222, username: 'admin', tags: ['linux'], mosh_allowed: false },
+    ]);
+    render(<ConnectionDialog onConnect={onConnect} onClose={onClose} />);
+    await waitFor(() => {
+      expect(screen.getByTitle('Edit saved host')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTitle('Edit saved host'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit Saved Host')).toBeDefined();
+    });
+    expect(screen.getByDisplayValue('本番サーバー')).toBeDefined();
+    expect(screen.getByDisplayValue('host1.example.com')).toBeDefined();
+    expect(screen.getByDisplayValue('2222')).toBeDefined();
+    expect(screen.getByDisplayValue('admin')).toBeDefined();
+    expect(screen.getByText('Save Changes')).toBeDefined();
+  });
+
+  it('calls updateHost with edited fields when saving changes', async () => {
+    mockApi.getHosts.mockResolvedValue([
+      { id: 'h1', hostname: 'host1.example.com', port: 22, username: 'admin', tags: ['linux'], mosh_allowed: false },
+    ]);
+    render(<ConnectionDialog onConnect={onConnect} onClose={onClose} />);
+    await waitFor(() => {
+      expect(screen.getByTitle('Edit saved host')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTitle('Edit saved host'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Save Changes')).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('hostname or IP'), { target: { value: 'updated.example.com' } });
+    fireEvent.click(screen.getByText('Save Changes'));
+
+    await waitFor(() => {
+      expect(mockApi.updateHost).toHaveBeenCalledWith(
+        'h1',
+        expect.objectContaining({ hostname: 'updated.example.com' })
+      );
+    });
+    expect(onConnect).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText('Connect to Host')).toBeDefined();
+    });
+  });
+
+  it('cancels edit mode without saving changes', async () => {
+    render(<ConnectionDialog onConnect={onConnect} onClose={onClose} />);
+    await waitFor(() => {
+      expect(screen.getByTitle('Edit saved host')).toBeDefined();
+    });
+    fireEvent.click(screen.getByTitle('Edit saved host'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Cancel Edit')).toBeDefined();
+    });
+    fireEvent.click(screen.getByText('Cancel Edit'));
+
+    expect(mockApi.updateHost).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText('Connect to Host')).toBeDefined();
     });
   });
 });

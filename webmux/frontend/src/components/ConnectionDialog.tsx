@@ -23,6 +23,7 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [editingHostId, setEditingHostId] = useState<string | null>(null);
 
   useEffect(() => {
     api.getHosts().then(setHosts).catch(() => {});
@@ -52,6 +53,10 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
 
   const handleConnect = async (e: FormEvent) => {
     e.preventDefault();
+    if (editingHostId) {
+      await handleUpdateHost();
+      return;
+    }
     if (!validate()) return;
     setSubmitting(true);
     try {
@@ -118,8 +123,64 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
     try {
       await api.deleteHost(hostId);
       setHosts(prev => prev.filter(h => h.id !== hostId));
+      if (editingHostId === hostId) handleCancelEdit();
     } catch (err) {
       setError((err as Error).message);
+    }
+  };
+
+  const handleEditHost = (host: HostEntry) => {
+    setEditingHostId(host.id);
+    setName(host.name || '');
+    setHostname(host.hostname);
+    setPort(host.port);
+    setUsername(host.username || '');
+    setTransport(host.transport === 'mosh' ? 'mosh' : 'ssh');
+    setPassword('');
+    if (host.key_id) {
+      setAuthMode('key');
+      setSelectedKeyId(host.key_id);
+      setShowAdvanced(true);
+    } else {
+      setAuthMode('agent');
+      setSelectedKeyId('');
+    }
+    setError(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingHostId(null);
+    setName('');
+    setHostname('');
+    setPort(22);
+    setUsername('');
+    setPassword('');
+    setAuthMode('agent');
+    setSelectedKeyId('');
+    setTransport('ssh');
+    setShowAdvanced(false);
+    setError(null);
+  };
+
+  const handleUpdateHost = async () => {
+    if (!editingHostId) return;
+    if (!validate()) return;
+    setSubmitting(true);
+    try {
+      const updated = await api.updateHost(editingHostId, {
+        name: name.trim() || undefined,
+        hostname: hostname.trim(),
+        port,
+        username: username.trim(),
+        transport,
+        key_id: authMode === 'key' ? selectedKeyId : '',
+      });
+      setHosts(prev => prev.map(h => (h.id === updated.id ? updated : h)));
+      handleCancelEdit();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -129,7 +190,7 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
     <div style={styles.backdrop} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={styles.dialog}>
         <div style={styles.header}>
-          <span style={styles.title}>Connect to Host</span>
+          <span style={styles.title}>{editingHostId ? 'Edit Saved Host' : 'Connect to Host'}</span>
           <button style={styles.closeBtn} onClick={onClose}>{'\u2715'}</button>
         </div>
 
@@ -165,9 +226,19 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
                       </button>
                       <button
                         type="button"
+                        style={styles.hostEditBtn}
+                        onClick={() => handleEditHost(h)}
+                        title="Edit saved host"
+                        disabled={submitting}
+                      >
+                        {'\u270e'}
+                      </button>
+                      <button
+                        type="button"
                         style={styles.hostDeleteBtn}
                         onClick={() => handleDeleteHost(h.id)}
                         title="Remove saved host"
+                        disabled={submitting}
                       >
                         {'\u2715'}
                       </button>
@@ -181,7 +252,9 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
           {/* Divider when hosts exist */}
           {hosts.length > 0 && (
             <div style={styles.divider}>
-              <span style={styles.dividerText}>or connect to a new host</span>
+              <span style={styles.dividerText}>
+                {editingHostId ? 'editing saved host' : 'or connect to a new host'}
+              </span>
             </div>
           )}
 
@@ -282,15 +355,26 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
           {error && <div style={styles.error}>{error}</div>}
 
           <div style={styles.actions}>
-            <button type="button" style={styles.cancelBtn} onClick={onClose}>Cancel</button>
-            {!alreadySaved && hostname.trim() && (
-              <button type="button" style={styles.saveBtn} onClick={handleSaveAndConnect} disabled={submitting}>
-                {submitting ? 'Saving\u2026' : 'Save & Connect'}
-              </button>
+            {editingHostId ? (
+              <>
+                <button type="button" style={styles.cancelBtn} onClick={handleCancelEdit}>Cancel Edit</button>
+                <button type="submit" style={styles.saveBtn} disabled={submitting}>
+                  {submitting ? 'Saving\u2026' : 'Save Changes'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" style={styles.cancelBtn} onClick={onClose}>Cancel</button>
+                {!alreadySaved && hostname.trim() && (
+                  <button type="button" style={styles.saveBtn} onClick={handleSaveAndConnect} disabled={submitting}>
+                    {submitting ? 'Saving\u2026' : 'Save & Connect'}
+                  </button>
+                )}
+                <button type="submit" style={styles.connectBtn} disabled={submitting}>
+                  {submitting ? 'Connecting\u2026' : 'Connect'}
+                </button>
+              </>
             )}
-            <button type="submit" style={styles.connectBtn} disabled={submitting}>
-              {submitting ? 'Connecting\u2026' : 'Connect'}
-            </button>
           </div>
         </form>
       </div>
@@ -391,6 +475,16 @@ const styles: Record<string, React.CSSProperties> = {
   hostCardPort: {
     color: '#666',
     fontSize: 11,
+  },
+  hostEditBtn: {
+    background: 'none',
+    border: 'none',
+    borderLeft: '1px solid #2a2a4a',
+    padding: '6px 8px',
+    color: '#8888aa',
+    fontSize: 11,
+    cursor: 'pointer',
+    lineHeight: 1,
   },
   hostDeleteBtn: {
     background: 'none',

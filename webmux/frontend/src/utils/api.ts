@@ -153,6 +153,8 @@ export const api = {
   getHosts: () => request<HostEntry[]>('/hosts'),
   createHost: (host: Partial<HostEntry>) =>
     request<HostEntry>('/hosts', { method: 'POST', body: JSON.stringify(host) }),
+  updateHost: (id: string, host: Partial<HostEntry>) =>
+    request<HostEntry>(`/hosts/${id}`, { method: 'PUT', body: JSON.stringify(host) }),
   deleteHost: (id: string) =>
     request<void>(`/hosts/${id}`, { method: 'DELETE' }),
 
