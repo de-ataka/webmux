@@ -1,7 +1,8 @@
+import * as path from 'path';
 import { parseSshConfig } from '@backend/services/sshConfigParser';
 
 describe('parseSshConfig', () => {
-  const homeDir = '/home/testuser';
+  const homeDir = path.join('home', 'testuser');
 
   it('parses a basic Host block', () => {
     const config = [
@@ -21,7 +22,7 @@ describe('parseSshConfig', () => {
         hostname: '192.168.1.10',
         port: 2222,
         username: 'alice',
-        identityFile: '/home/testuser/.ssh/id_ed25519',
+        identityFile: path.join(homeDir, '.ssh', 'id_ed25519'),
       },
     ]);
   });
@@ -102,7 +103,7 @@ describe('parseSshConfig', () => {
   it('strips quotes from values', () => {
     const result = parseSshConfig('Host myserver\n  IdentityFile "~/.ssh/my key"\n', homeDir);
 
-    expect(result[0].identityFile).toBe('/home/testuser/.ssh/my key');
+    expect(result[0].identityFile).toBe(path.join(homeDir, '.ssh', 'my key'));
   });
 
   it('returns an empty array for empty content', () => {
