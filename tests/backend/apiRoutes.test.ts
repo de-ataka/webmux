@@ -4,6 +4,8 @@ import * as os from 'os';
 import express from 'express';
 import request from 'supertest';
 
+jest.mock('@backend/services/sshConfigParser');
+
 describe('API Routes', () => {
   let tmpDir: string;
   let configDir: string;
@@ -49,6 +51,9 @@ describe('API Routes', () => {
     app.use('/api/sessions', sessionsRouter);
     app.use('/api/keys', keysRouter);
     app.use('/api/auth', authRouter);
+
+    const { readSshConfigCandidates } = require('@backend/services/sshConfigParser');
+    (readSshConfigCandidates as jest.Mock).mockReturnValue([]);
   });
 
   afterEach(async () => {
@@ -513,6 +518,105 @@ describe('API Routes', () => {
     it('returns 404 for unknown key', async () => {
       const res = await request(app).delete('/api/keys/nonexistent');
       expect(res.status).toBe(404);
+    });
+  });
+
+  // --- SSH Config Import ---
+
+  describe('GET /api/hosts/ssh-config', () => {
+    it('returns parsed candidates', async () => {
+      const { readSshConfigCandidates } = require('@backend/services/sshConfigParser');
+      (readSshConfigCandidates as jest.Mock).mockReturnValue([
+        { alias: 'foo', hostname: 'foo.example.com', port: 22, username: 'alice', identityFile: '/home/alice/.ssh/id_rsa' },
+      ]);
+
+      const res = await request(app).get('/api/hosts/ssh-config');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([
+        { alias: 'foo', hostname: 'foo.example.com', port: 22, username: 'alice', identityFile: '/home/alice/.ssh/id_rsa', alreadyImported: false },
+      ]);
+    });
+
+    it('flags candidates that match an already-saved host name', async () => {
+      const { readSshConfigCandidates } = require('@backend/services/sshConfigParser');
+      (readSshConfigCandidates as jest.Mock).mockReturnValue([
+        { alias: 'h1', hostname: 'host1.example.com', port: 22, username: '', identityFile: null },
+      ]);
+      await request(app).put('/api/hosts/h1').send({ name: 'h1' });
+
+      const res = await request(app).get('/api/hosts/ssh-config');
+      expect(res.body[0].alreadyImported).toBe(true);
+    });
+  });
+
+  describe('POST /api/hosts/ssh-config/import', () => {
+    it('returns 400 without aliases', async () => {
+      const res = await request(app).post('/api/hosts/ssh-config/import').send({});
+      expect(res.status).toBe(400);
+    });
+
+    it('imports a candidate, creating a host and a key', async () => {
+      const { readSshConfigCandidates } = require('@backend/services/sshConfigParser');
+      (readSshConfigCandidates as jest.Mock).mockReturnValue([
+        { alias: 'foo', hostname: 'foo.example.com', port: 2222, username: 'alice', identityFile: '/home/alice/.ssh/id_rsa' },
+      ]);
+
+      const res = await request(app).post('/api/hosts/ssh-config/import').send({ aliases: ['foo'] });
+      expect(res.status).toBe(201);
+      expect(res.body.created).toHaveLength(1);
+      expect(res.body.skipped).toEqual([]);
+      expect(res.body.created[0]).toMatchObject({
+        name: 'foo',
+        hostname: 'foo.example.com',
+        port: 2222,
+        username: 'alice',
+        transport: 'ssh',
+      });
+      expect(res.body.created[0].key_id).toBeTruthy();
+
+      const hosts = await request(app).get('/api/hosts');
+      expect(hosts.body).toHaveLength(2);
+      const keys = await request(app).get('/api/keys');
+      expect(keys.body).toHaveLength(1);
+    });
+
+    it('creates a host without a key when there is no identity file', async () => {
+      const { readSshConfigCandidates } = require('@backend/services/sshConfigParser');
+      (readSshConfigCandidates as jest.Mock).mockReturnValue([
+        { alias: 'nokey', hostname: 'nokey.example.com', port: 22, username: 'bob', identityFile: null },
+      ]);
+
+      const res = await request(app).post('/api/hosts/ssh-config/import').send({ aliases: ['nokey'] });
+      expect(res.body.created[0].key_id).toBe('');
+    });
+
+    it('reuses an existing key entry with the same identity file path instead of duplicating it', async () => {
+      const { readSshConfigCandidates } = require('@backend/services/sshConfigParser');
+      (readSshConfigCandidates as jest.Mock).mockReturnValue([
+        { alias: 'a', hostname: 'a.example.com', port: 22, username: 'u', identityFile: '/home/u/.ssh/id_ed25519' },
+        { alias: 'b', hostname: 'b.example.com', port: 22, username: 'u', identityFile: '/home/u/.ssh/id_ed25519' },
+      ]);
+
+      const res = await request(app).post('/api/hosts/ssh-config/import').send({ aliases: ['a', 'b'] });
+      expect(res.body.created[0].key_id).toBe(res.body.created[1].key_id);
+
+      const keys = await request(app).get('/api/keys');
+      expect(keys.body).toHaveLength(1);
+    });
+
+    it('skips aliases that are unknown or already imported', async () => {
+      const { readSshConfigCandidates } = require('@backend/services/sshConfigParser');
+      (readSshConfigCandidates as jest.Mock).mockReturnValue([
+        { alias: 'known', hostname: 'known.example.com', port: 22, username: 'u', identityFile: null },
+      ]);
+
+      const first = await request(app).post('/api/hosts/ssh-config/import').send({ aliases: ['known', 'ghost'] });
+      expect(first.body.created).toHaveLength(1);
+      expect(first.body.skipped).toEqual(['ghost']);
+
+      const second = await request(app).post('/api/hosts/ssh-config/import').send({ aliases: ['known'] });
+      expect(second.body.created).toEqual([]);
+      expect(second.body.skipped).toEqual(['known']);
     });
   });
 

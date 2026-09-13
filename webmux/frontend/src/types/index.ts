@@ -79,6 +79,16 @@ export interface HostEntry {
   rdp_port: number;
 }
 
+// Candidate host parsed from the server's ~/.ssh/config, for the import picker.
+export interface SshConfigCandidate {
+  alias: string;
+  hostname: string;
+  port: number;
+  username: string;
+  identityFile: string | null;
+  alreadyImported: boolean;
+}
+
 export interface AuthStatus {
   mode: 'none' | 'local';
   bootstrap_required: boolean;
