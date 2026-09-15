@@ -90,6 +90,7 @@ gh pr checks                          # Verify CI
 - Work on a branch and submit changes through a pull request instead of pushing feature work directly to `main`.
 - Reference the issue in commits and use `Closes #<number>` in the pull request body when appropriate.
 - Run relevant tests, linters, and builds before opening a pull request, and merge only after required checks pass.
+- **Never open a pull request against the upstream `jordanhubbard/webmux` repository.** This fork (`de-ataka/webmux`) has diverged from upstream's original intent, and PRs must not be sent there without the user explicitly asking for it in that specific instance. All pull requests target `origin` (`de-ataka/webmux`) unless told otherwise.
 
 ## Session Completion
 
