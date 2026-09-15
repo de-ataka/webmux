@@ -141,6 +141,7 @@ export class SessionBroker extends EventEmitter {
     // Determine hostname
     let hostname = req.hostname || '';
     let port = req.port || 22;
+    let hostName: string | undefined;
     if (req.host_id) {
       try {
         const hostsConfig = persistence.loadHosts();
@@ -148,6 +149,7 @@ export class SessionBroker extends EventEmitter {
         if (hostEntry) {
           hostname = hostEntry.hostname;
           port = hostEntry.port;
+          hostName = hostEntry.name;
         }
       } catch {
         // hosts.yaml not available
@@ -195,7 +197,11 @@ export class SessionBroker extends EventEmitter {
       state: 'connecting',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      title: internal.title ?? (transport === 'exec' ? `${hostname}:${port}` : `${req.username}@${hostname}`),
+      title: internal.title ?? (transport === 'exec'
+        ? `${hostname}:${port}`
+        : hostName
+          ? `${hostName}:${req.username}@${hostname}`
+          : `${req.username}@${hostname}`),
       persistent: internal.persistent ?? true,
       minimized: false,
       workspace: internal.workspace,

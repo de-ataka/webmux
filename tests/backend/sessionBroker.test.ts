@@ -103,6 +103,40 @@ describe('SessionBroker', () => {
     expect(session.port).toBe(22);
   });
 
+  it('titles a plain session as user@host', async () => {
+    const broker = new SessionBroker();
+    await broker.initialize();
+    const session = await broker.create({
+      username: 'user1',
+      hostname: 'box.example.com',
+    });
+    expect(session.title).toBe('user1@box.example.com');
+  });
+
+  it('titles a saved-host session as user@host when the host has no name', async () => {
+    const broker = new SessionBroker();
+    await broker.initialize();
+    const session = await broker.create({
+      username: 'user1',
+      host_id: 'h1',
+    });
+    expect(session.title).toBe('user1@host1.example.com');
+  });
+
+  it('prefixes the title with the saved host name when set', async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'config', 'hosts.yaml'),
+      'hosts:\n  - id: h2\n    name: Prod DB\n    hostname: host2.example.com\n    port: 22\n    tags: []\n    mosh_allowed: false\n',
+    );
+    const broker = new SessionBroker();
+    await broker.initialize();
+    const session = await broker.create({
+      username: 'user1',
+      host_id: 'h2',
+    });
+    expect(session.title).toBe('Prod DB:user1@host2.example.com');
+  });
+
   it('get returns session by id', async () => {
     const broker = new SessionBroker();
     await broker.initialize();
