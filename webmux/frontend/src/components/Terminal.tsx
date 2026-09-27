@@ -10,6 +10,7 @@ import { useInputBroadcast } from '../contexts/InputBroadcastContext';
 import { installTerminalQuerySuppressors, shouldSuppressTerminalInput } from '../utils/terminalInput';
 import { TERMINAL_FONTS_LOADED_EVENT, loadTerminalFontFamily, normalizeTerminalFontFamily } from '../utils/terminalFont';
 import { isCopyShortcutKey, isTranscriptToggleKey } from '../utils/terminalShortcuts';
+import { copyToClipboard } from '../utils/clipboard';
 
 export const DEFAULT_TERMINAL_THEME: TerminalTheme = {
   background: '#0d0d1a',
@@ -252,7 +253,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
       // sending SIGINT — mirrors the convention used by most terminal apps.
       if (isCopyShortcutKey(e) && term.hasSelection()) {
         e.preventDefault();
-        void navigator.clipboard.writeText(term.getSelection()).catch(() => {});
+        copyToClipboard(term.getSelection());
         return false;
       }
       if (isTranscriptToggleKey(e)) {
