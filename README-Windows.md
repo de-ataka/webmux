@@ -124,6 +124,48 @@ For access from other machines, allow the selected port through Windows Defender
 New-NetFirewallRule -DisplayName 'WebMux 8080' -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow
 ```
 
+## Local Shell Sessions
+
+The connection dialog includes a **Local Shell** section at the top with five one-click buttons that open a terminal on the local machine without requiring an SSH connection.
+
+| Button | Shell | Notes |
+|--------|-------|-------|
+| ⚡ PowerShell | `powershell.exe` | Standard user |
+| ⚡🛡 PowerShell (Admin) | `gsudo powershell.exe` | Elevated — requires gsudo |
+| ⬛ Command Prompt | `cmd.exe` | Standard user |
+| ⬛🛡 Cmd (Admin) | `gsudo cmd.exe` | Elevated — requires gsudo |
+| 🐧 Bash | `bash.exe` | Git Bash or WSL bash |
+
+Each session tile displays the shell name in its title bar so multiple open shells are easy to identify.
+
+### Admin shells and gsudo
+
+The two admin buttons require [gsudo](https://github.com/gerardog/gsudo) to be installed and available in `PATH`. gsudo is a Windows `sudo` equivalent that handles UAC elevation inside an existing console window rather than opening a new one.
+
+Install gsudo as a portable binary (no administrator rights needed):
+
+```powershell
+$dest = "$env:LOCALAPPDATA\gsudo\bin\x64"
+New-Item -ItemType Directory -Force -Path $dest | Out-Null
+$release = Invoke-RestMethod "https://api.github.com/repos/gerardog/gsudo/releases/latest"
+$zip = ($release.assets | Where-Object { $_.name -like "*Portable*.zip" })[0]
+$tmp = "$env:TEMP\gsudo.zip"
+Invoke-WebRequest -Uri $zip.browser_download_url -OutFile $tmp
+$shell = New-Object -ComObject Shell.Application
+($shell.NameSpace($tmp).Items() | Where-Object Name -eq "x64") | ForEach-Object {
+    $shell.NameSpace($dest).CopyHere($_, 4+16)
+}
+Start-Sleep -Seconds 5; Remove-Item $tmp
+$cur = [System.Environment]::GetEnvironmentVariable("PATH","User")
+if ($cur -notlike "*$dest*") {
+    [System.Environment]::SetEnvironmentVariable("PATH","$cur;$dest","User")
+}
+```
+
+Open a new PowerShell window and verify: `gsudo --version`
+
+If gsudo is not found in `PATH` when the connection dialog opens, the two admin buttons are automatically disabled. The backend exposes `GET /api/system/capabilities` (no authentication required) which the frontend queries on dialog open to determine availability.
+
 ## Platform Notes
 
 - Key-based OpenSSH sessions are the recommended native Windows configuration.

@@ -197,7 +197,7 @@ export class SessionBroker extends EventEmitter {
       state: 'connecting',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      title: internal.title ?? (transport === 'exec'
+      title: internal.title ?? req.title ?? (transport === 'exec'
         ? `${hostname}:${port}`
         : hostName
           ? `${hostName}:${req.username}@${hostname}`
