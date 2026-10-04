@@ -248,6 +248,7 @@ export interface CreateSessionRequest {
   // For exec transport: command template with {host}, {port}, {user} substitutions.
   // Falls back to WEBMUX_EXEC_COMMAND env var if not set.
   exec_command?: string;
+  title?: string;
   cols?: number;
   rows?: number;
   row?: number;

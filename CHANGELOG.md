@@ -5,6 +5,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- add one-click local shell buttons (PowerShell, PowerShell Admin, Command Prompt, Cmd Admin, Bash) to the connection dialog on Windows
+- add `GET /api/system/capabilities` endpoint that reports available executables (gsudo, bash); admin shell buttons are automatically disabled when gsudo is absent
+- set session tile title from the shell label so multiple local shells are identifiable at a glance
+- add `title` field to `CreateSessionRequest` allowing callers to override the default session title
+
 ## [1.3.10] - 2026-09-10
 
 ### Added

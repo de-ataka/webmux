@@ -10,6 +10,14 @@ interface ConnectionDialogProps {
   suggestedCol?: number;
 }
 
+const LOCAL_SHELLS = [
+  { label: 'PowerShell',        exec: 'powershell.exe',        icon: '⚡',  admin: false },
+  { label: 'PowerShell (Admin)', exec: 'gsudo powershell.exe', icon: '⚡🛡', admin: true  },
+  { label: 'Command Prompt',    exec: 'cmd.exe',               icon: '⬛',  admin: false },
+  { label: 'Cmd (Admin)',       exec: 'gsudo cmd.exe',         icon: '⬛🛡', admin: true  },
+  { label: 'Bash',              exec: 'bash.exe',              icon: '🐧',  admin: false },
+];
+
 export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCol }: ConnectionDialogProps) {
   const [hosts, setHosts] = useState<HostEntry[]>([]);
   const [keys, setKeys] = useState<Pick<KeyEntry, 'id' | 'type' | 'encrypted' | 'description'>[]>([]);
@@ -26,6 +34,32 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
   const [submitting, setSubmitting] = useState(false);
   const [editingHostId, setEditingHostId] = useState<string | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [caps, setCaps] = useState<{ gsudo: boolean; bash: boolean } | null>(null);
+
+  useEffect(() => {
+    api.getCapabilities().then(setCaps).catch(() => setCaps({ gsudo: false, bash: false }));
+  }, []);
+
+  const handleLocalShell = async (exec: string, label: string) => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onConnect({
+        username: 'local',
+        hostname: 'localhost',
+        port: 0,
+        transport: 'exec',
+        exec_command: exec,
+        title: label,
+        row: suggestedRow ?? 0,
+        col: suggestedCol ?? 0,
+      });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     api.getHosts().then(setHosts).catch(() => {});
@@ -198,13 +232,46 @@ export function ConnectionDialog({ onConnect, onClose, suggestedRow, suggestedCo
 
         <form onSubmit={handleConnect} style={styles.form}>
           {!editingHostId && (
-            <button
-              type="button"
-              style={styles.importLink}
-              onClick={() => setShowImportDialog(true)}
-            >
-              Import from ~/.ssh/config
-            </button>
+            <>
+              <div style={styles.field}>
+                <label style={styles.label}>Local Shell</label>
+                <div style={styles.localShellGrid}>
+                  {LOCAL_SHELLS.map((s, i) => {
+                    const unavailable = s.admin && caps !== null && !caps.gsudo;
+                    return (
+                      <button
+                        key={s.exec}
+                        type="button"
+                        style={{
+                          ...styles.localShellBtn,
+                          ...(s.admin ? styles.localShellBtnAdmin : {}),
+                          ...(i === LOCAL_SHELLS.length - 1 && LOCAL_SHELLS.length % 2 !== 0
+                            ? { gridColumn: '1 / -1' } : {}),
+                          ...(unavailable ? styles.localShellBtnDisabled : {}),
+                        }}
+                        onClick={() => handleLocalShell(s.exec, s.label)}
+                        disabled={submitting || unavailable}
+                        title={unavailable ? `${s.label} requires gsudo (not found in PATH)` : `Open ${s.label}`}
+                      >
+                        <span style={styles.localShellIcon}>{s.icon}</span>
+                        {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p style={styles.hint}>Admin shells require <a href="https://github.com/gerardog/gsudo" target="_blank" rel="noreferrer" style={{ color: '#7c6af7' }}>gsudo</a> installed in PATH.</p>
+              </div>
+              <div style={styles.divider}>
+                <span style={styles.dividerText}>or connect to a remote host</span>
+              </div>
+              <button
+                type="button"
+                style={styles.importLink}
+                onClick={() => setShowImportDialog(true)}
+              >
+                Import from ~/.ssh/config
+              </button>
+            </>
           )}
 
           {/* Saved hosts as quick-connect cards */}
@@ -514,6 +581,37 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 10,
     cursor: 'pointer',
     lineHeight: 1,
+  },
+  localShellGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 6,
+  },
+  localShellBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    background: '#0d0d1a',
+    border: '1px solid #333366',
+    borderRadius: 6,
+    padding: '8px 10px',
+    color: '#c0c0e0',
+    fontSize: 12,
+    cursor: 'pointer',
+    fontWeight: 500,
+    whiteSpace: 'nowrap' as const,
+  },
+  localShellBtnAdmin: {
+    borderColor: '#555533',
+    color: '#cccc88',
+  },
+  localShellBtnDisabled: {
+    opacity: 0.35,
+    cursor: 'not-allowed',
+  },
+  localShellIcon: {
+    fontSize: 14,
   },
   importLink: {
     alignSelf: 'flex-start',

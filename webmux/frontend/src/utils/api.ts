@@ -181,6 +181,9 @@ export const api = {
     request<Session>(`/agents/${agentId}/attach`, { method: 'POST', body: JSON.stringify(req) }),
   createAgentScratch: (agentId: string, req: { selectedName?: string; cols: number; rows: number }) =>
     request<Session>(`/agents/${agentId}/scratch`, { method: 'POST', body: JSON.stringify(req) }),
+
+  // System capabilities
+  getCapabilities: () => fetch('/api/system/capabilities').then(r => r.json()) as Promise<{ gsudo: boolean; bash: boolean }>,
 };
 
 export function buildWsUrl(sessionId: string): string {

@@ -18,6 +18,7 @@ import templatesRouter from './api/templates';
 import vncRouter from './api/vnc';
 import rdpRouter from './api/rdp';
 import agentsRouter from './api/agents';
+import systemRouter from './api/system';
 import { setupWebSocket } from './websocket/handler';
 import { setupVncWebSocket } from './websocket/vncHandler';
 import { setupRdpWebSocket } from './websocket/rdpHandler';
@@ -125,6 +126,7 @@ async function main(): Promise<void> {
   app.use('/api/vnc', vncRouter);
   app.use('/api/rdp', rdpRouter);
   app.use('/api/agents', agentsRouter);
+  app.use('/api/system', systemRouter);
 
   // Health check
   app.get('/api/health', (_req, res) => {
