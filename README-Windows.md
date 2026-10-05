@@ -26,7 +26,7 @@ ssh -V
 ## Install the MSI
 
 Download `webmux-<version>-windows-x64.msi` and its `.sha256` file from the
-[latest release](https://github.com/jordanhubbard/webmux/releases/latest). Verify
+[latest release](https://github.com/de-ataka/webmux/releases/latest). Verify
 the download from PowerShell, substituting the downloaded filenames:
 
 ```powershell
@@ -57,7 +57,7 @@ Install Git, then clone and build:
 
 ```powershell
 winget install Git.Git
-git clone https://github.com/jordanhubbard/webmux.git
+git clone https://github.com/de-ataka/webmux.git
 cd webmux\webmux
 npm ci
 npm run build
