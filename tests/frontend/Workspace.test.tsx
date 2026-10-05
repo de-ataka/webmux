@@ -23,6 +23,7 @@ vi.mock('@frontend/utils/api', () => ({
     moveSession: vi.fn().mockResolvedValue({}),
     getHosts: vi.fn().mockResolvedValue([]),
     getKeys: vi.fn().mockResolvedValue([]),
+    getCapabilities: vi.fn().mockResolvedValue({ gsudo: false, bash: false }),
   },
 }));
 

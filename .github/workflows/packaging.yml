@@ -80,6 +80,9 @@ jobs:
             .replace(/^  url .*$/m, `  url "file://${source}"\n  version "0.0.0"`)
             .replace(/^  sha256 .*$/m, `  sha256 "${sha}"`));
           JS
+          # The runner image ships openssl@1.1 linked into /opt/homebrew/bin, which
+          # blocks linking the newer openssl pulled in by openssh.
+          brew unlink openssl@1.1 2>/dev/null || true
           brew install --build-from-source webmux/packaging-test/webmux
           brew test webmux/packaging-test/webmux
       - name: Verify service definition
