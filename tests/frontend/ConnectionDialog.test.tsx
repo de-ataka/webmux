@@ -12,6 +12,7 @@ const mockApi = vi.hoisted(() => ({
   createHost: vi.fn().mockResolvedValue({ id: 'h-new', hostname: 'new.example.com', port: 22, tags: [], mosh_allowed: false }),
   updateHost: vi.fn().mockResolvedValue({ id: 'h1', hostname: 'updated.example.com', port: 22, username: 'admin', tags: ['linux'], mosh_allowed: false }),
   deleteHost: vi.fn().mockResolvedValue(undefined),
+  getCapabilities: vi.fn().mockResolvedValue({ gsudo: false, bash: false }),
 }));
 
 vi.mock('@frontend/utils/api', () => ({
@@ -34,6 +35,7 @@ describe('ConnectionDialog', () => {
     mockApi.createHost.mockResolvedValue({ id: 'h-new', hostname: 'new.example.com', port: 22, tags: [], mosh_allowed: false });
     mockApi.updateHost.mockResolvedValue({ id: 'h1', hostname: 'updated.example.com', port: 22, username: 'admin', tags: ['linux'], mosh_allowed: false });
     mockApi.deleteHost.mockResolvedValue(undefined);
+    mockApi.getCapabilities.mockResolvedValue({ gsudo: false, bash: false });
   });
 
   it('renders dialog with hostname and username fields', async () => {
