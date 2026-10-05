@@ -90,7 +90,8 @@ jobs:
       - name: Verify service definition
         run: |
           brew services info webmux/packaging-test/webmux --json > "$RUNNER_TEMP/webmux-service.json"
-          node - <<'JS'
+          # The runner's node@22 breaks once brew upgrades simdjson; use the formula's node.
+          "$(brew --prefix node@24)/bin/node" - <<'JS'
           const assert = require('node:assert/strict');
           const fs = require('node:fs');
           const [service] = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/webmux-service.json`));
